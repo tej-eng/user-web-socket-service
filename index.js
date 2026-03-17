@@ -8,29 +8,36 @@ import socketHandler from "./socketdata/index.js";
 import swaggerUi from "swagger-ui-express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import fs from 'fs/promises';
-import path from 'path';
+import fs from "fs/promises";
+import path from "path";
 import cookie from "cookie";
 
 dotenv.config();
+
 const FRONTEND_URL = "https://dhwaniastro.com";
+
 const app = express();
-const port = process.env.PORT ;
+const port = process.env.PORT || 8009;
 const server = createServer(app);
+
+// ✅ CORS (only once, clean)
 app.use(cors({
   origin: FRONTEND_URL,
   credentials: true
 }));
 
+// ✅ SOCKET.IO CONFIG (FIXED PATH)
 const io = new Server(server, {
-  path: "/user-socket-service-v2/socket.io",
+  path: "/socket.io",   // ✅ FIXED (VERY IMPORTANT)
   cors: {
     origin: FRONTEND_URL,
     credentials: true
   }
 });
 
-// Redis connections
+// ==============================
+// REDIS CONFIG
+// ==============================
 const pubClient = createClient({
   username: process.env.REDIS_USERNAME,
   password: process.env.REDIS_PASSWORD,
@@ -47,9 +54,9 @@ await subClient.connect();
 
 io.adapter(createAdapter(pubClient, subClient));
 
-/**
- * JWT authentication middleware for Socket.IO
- */
+// ==============================
+// JWT AUTH MIDDLEWARE
+// ==============================
 const jwtAuthMiddleware = (socket, next) => {
 
   console.log("JWT Auth Middleware Invoked");
@@ -58,69 +65,70 @@ const jwtAuthMiddleware = (socket, next) => {
   console.log("Received cookie header:", cookieHeader);
 
   if (!cookieHeader) {
-    console.warn("No cookies found in handshake headers");
     return next(new Error("Authentication error: No cookies found"));
   }
 
   const cookies = cookie.parse(cookieHeader);
-  console.log("Parsed cookies:", cookies);
   const token = cookies.accessToken;
-  console.log("Extracted token from cookies:", token);
 
   if (!token) {
-    console.warn("No accessToken found in cookies");
-    return next(new Error("Authentication error: Token missing in cookies"));
+    return next(new Error("Authentication error: Token missing"));
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-
     if (err) {
       return next(new Error("Authentication error: Invalid token"));
     }
 
     socket.user = decoded;
-
-    console.log("Authenticated socket user:", decoded);
+    console.log("Authenticated user:", decoded);
 
     next();
   });
 };
 
-// Namespace for astrologer chat with JWT authentication
+// ==============================
+// NAMESPACE
+// ==============================
 const dhwaniNamespace = io.of("/dhwani-astro");
 dhwaniNamespace.use(jwtAuthMiddleware);
 
-// Attach your socket handlers here
+// Attach handlers
 socketHandler(dhwaniNamespace, pubClient, subClient);
 
-//app.use("/uploads", express.static("uploads"));
+// ==============================
+// EXPRESS ROUTES
+// ==============================
+
 app.use("/uploads", express.static(process.env.UPLOADS_DIR));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
 
-// Root endpoint
+// Root
 app.get("/", (req, res) => {
-  res.send("Welcome to the Chat Application");
+  res.send("Chat Service Running 🚀");
 });
 
-// Logs endpoint
+// Logs API
 app.get("/api/logs", async (req, res) => {
   try {
-    const logFile = path.join(process.cwd(), 'logs', 'log.txt');
-    const logs = await fs.readFile(logFile, 'utf8');
-    res.type('text/plain').send(logs);
+    const logFile = path.join(process.cwd(), "logs", "log.txt");
+    const logs = await fs.readFile(logFile, "utf8");
+    res.type("text/plain").send(logs);
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      res.status(404).json({ error: 'Log file not found' });
+    if (err.code === "ENOENT") {
+      res.status(404).json({ error: "Log file not found" });
     } else {
-      console.error('Error reading log file:', err);
-      res.status(500).json({ error: 'Failed to read log file' });
+      console.error(err);
+      res.status(500).json({ error: "Failed to read logs" });
     }
   }
 });
 
-// Start server
+// ==============================
+// START SERVER
+// ==============================
 server.listen(port, () => {
-  console.log(`Server started on port ${port}`);
+  console.log(`🚀 Socket Server running on port ${port}`);
 });

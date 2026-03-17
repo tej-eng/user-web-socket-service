@@ -11,5 +11,5 @@ RUN npx prisma generate
 
 EXPOSE 8009
 
-CMD ["node", "src/index.js"]
+CMD ["node", "index.js"]
 

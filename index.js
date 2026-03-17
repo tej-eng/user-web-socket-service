@@ -23,11 +23,11 @@ app.use(cors({
 }));
 
 const io = new Server(server, {
+  path: "/user-socket-service-v2/socket.io",
   cors: {
-    origin: "http://localhost:3000", 
-    methods: ["GET", "POST"],
-    credentials: true               
-  },
+    origin: "https://dhwaniastro.com",
+    credentials: true
+  }
 });
 
 // Redis connections

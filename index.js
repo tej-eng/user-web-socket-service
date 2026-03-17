@@ -13,19 +13,19 @@ import path from 'path';
 import cookie from "cookie";
 
 dotenv.config();
-
+const FRONTEND_URL = "https://dhwaniastro.com";
 const app = express();
 const port = process.env.PORT ;
 const server = createServer(app);
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: FRONTEND_URL,
   credentials: true
 }));
 
 const io = new Server(server, {
   path: "/user-socket-service-v2/socket.io",
   cors: {
-    origin: "https://dhwaniastro.com",
+    origin: FRONTEND_URL,
     credentials: true
   }
 });

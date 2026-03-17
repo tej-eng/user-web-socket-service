@@ -1,0 +1,15 @@
+services:
+  user-websocket-service-v2:
+    build: .
+    container_name: user-websocket-service-v2
+    restart: always
+    env_file:
+      - .env   
+    ports:
+      - "8009:8009"
+    networks:
+      - dhwaniastro-net
+
+networks:
+  dhwaniastro-net:
+    external: true

@@ -42,7 +42,6 @@ async function logEvent(event, data, isError = false) {
 ========================= */
 
 function userJoinGroup(id, room_id) {
-  console.log("User join group  1111111111111:",  id, room_id );
   const user = { id, room_id };
   users.push(user);
   return user;
@@ -200,13 +199,12 @@ async function socketHandler(io, pubClient, subClient) {
       ========================= */
 
       onSafe("joinChat", (data) => {
-        console.log("Join chat data----11111111-----------------:", data);
+        console.log("Join chat data---------------------:", data);
         userJoinGroup(data.username, data.room_id);
 
         socket.join(String(data.room_id));
-        console.log("User joined room:22222222", data.room_id);
         socket.roomId = String(data.room_id);
-        console.log("User joined room:33333", data.room_id);
+
         safePublish(pubClient, "room_notification", {
           message: `${data.username} has joined the chat.`,
           roomid: String(data.room_id),

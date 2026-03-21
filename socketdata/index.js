@@ -175,7 +175,7 @@ async function socketHandler(io, pubClient, subClient) {
         // sentRequests[userId] = { timestamp: currentTimestamp };
 
         // setTimeout(() => delete sentRequests[userId], requestCooldown);
-      const astroId=156983;
+         const astroId=156983;
         safePublish(pubClient, "chat_requests", {
           message: "Chat request sent successfully",
           userName: sanitizeHtml(data.userName || ""),
@@ -199,6 +199,7 @@ async function socketHandler(io, pubClient, subClient) {
       ========================= */
 
       onSafe("joinChat", (data) => {
+        console.log("Join chat data---------------------:", data);
         userJoinGroup(data.username, data.room_id);
 
         socket.join(String(data.room_id));

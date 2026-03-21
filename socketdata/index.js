@@ -152,7 +152,7 @@ async function socketHandler(io, pubClient, subClient) {
       ========================= */
 
       onSafe("chat_request", async (data) => {
-      
+         // chat_started_user
          console.log("Chat request data---------------------:", data);
 
         // const userId = data.user_id;
@@ -175,23 +175,23 @@ async function socketHandler(io, pubClient, subClient) {
         // sentRequests[userId] = { timestamp: currentTimestamp };
 
         // setTimeout(() => delete sentRequests[userId], requestCooldown);
-
-        // safePublish(pubClient, "chat_requests", {
-        //   message: "Chat request sent successfully",
-        //   userName: sanitizeHtml(data.userName || ""),
-        //   gender: data.gender,
-        //   dateOfBirth: data.dateOfBirth,
-        //   timeOfBirth: data.timeOfBirth,
-        //   occupation: sanitizeHtml(data.occupation || ""),
-        //   location: sanitizeHtml(data.location || ""),
-        //   astro_id: astroId,
-        //   user_id: userId,
-        //   is_promotional: data.is_promotional,
-        //   room_id: data.room_id,
-        //   maximum_time: data.maximum_time,
-        //   user_image: data.user_image,
-        //   phoneNumber: "",
-        // });
+      const astroId=156983;
+        safePublish(pubClient, "chat_requests", {
+          message: "Chat request sent successfully",
+          userName: sanitizeHtml(data.userName || ""),
+          gender: data.gender,
+          dateOfBirth: data.dateOfBirth,
+          timeOfBirth: data.timeOfBirth,
+          occupation: sanitizeHtml(data.occupation || ""),
+          location: sanitizeHtml(data.location || ""),
+          astro_id: astroId,
+          user_id: userId,
+          is_promotional: data.is_promotional,
+          room_id: data.room_id,
+          maximum_time: data.maximum_time,
+          user_image: data.user_image,
+          phoneNumber: "",
+        });
       });
 
       /* =========================
@@ -263,25 +263,7 @@ async function socketHandler(io, pubClient, subClient) {
           logEvent("chat_save_error", error, true);
         }
       });
-      socket.on("chat_request", async (data) => {
-        console.log("Chat request data:", data);
-         safePublish(pubClient, "chat_requests", {
-          message: "Chat request -----------sent successfully",
-          // userName: sanitizeHtml(data.userName || ""),
-          // gender: data.gender,
-          // dateOfBirth: data.dateOfBirth,
-          // timeOfBirth: data.timeOfBirth,
-          // occupation: sanitizeHtml(data.occupation || ""),
-          // location: sanitizeHtml(data.location || ""),
-          // astro_id: astroId,
-          // user_id: userId,
-          // is_promotional: data.is_promotional,
-          // room_id: data.room_id,
-          // maximum_time: data.maximum_time,
-          // user_image: data.user_image,
-           phoneNumber: "9211035927",
-        });
-         });
+     
       /* =========================
          Typing
       ========================= */

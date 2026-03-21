@@ -185,7 +185,7 @@ async function socketHandler(io, pubClient, subClient) {
           occupation: sanitizeHtml(data.occupation || ""),
           location: sanitizeHtml(data.location || ""),
           astro_id: astroId,
-          user_id: userId,
+          user_id: data.user_id,
           is_promotional: data.is_promotional,
           room_id: data.room_id,
           maximum_time: data.maximum_time,

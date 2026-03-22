@@ -202,11 +202,12 @@ async function socketHandler(io, pubClient, subClient) {
       onSafe("joinChat", (data) => {
         console.log("Join chat data---------------------:", data);
         userJoinGroup(data.username, data.room_id);
-
+        console.log("Current users in rooms111:");
         socket.join(String(data.room_id));
-        socket.roomId = String(data.room_id);
 
-        safePublish(pubClient, "room_notification", {
+        socket.roomId = String(data.room_id);
+        console.log("Current users in rooms2222:");
+        safePublish(pubClient, "userJoinedChat", {
           message: `${data.username} has joined the chat.`,
           roomid: String(data.room_id),
         });

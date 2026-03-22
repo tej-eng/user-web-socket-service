@@ -42,6 +42,7 @@ async function logEvent(event, data, isError = false) {
 ========================= */
 
 function userJoinGroup(id, room_id) {
+  console.log("User joining room:", { id, room_id });
   const user = { id, room_id };
   users.push(user);
   return user;

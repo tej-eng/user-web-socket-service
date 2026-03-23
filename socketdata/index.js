@@ -42,7 +42,6 @@ async function logEvent(event, data, isError = false) {
 ========================= */
 
 function userJoinGroup(id, room_id) {
-  console.log("User joining room:", { id, room_id });
   const user = { id, room_id };
   users.push(user);
   return user;
@@ -96,12 +95,12 @@ async function socketHandler(io, pubClient, subClient) {
 
           switch (ch) {
             case "chat_status":
-              if (data.status === "Accepted" && data.who === "astrologer") {
+              if (data.status === "Accepted") {
                 io.emit("chat_started_astrolgoer", data);
                 io.emit("chat_started_user", data);
               }
 
-              if (data.status === "rejected" && data.who === "astrologer") {
+              if (data.status === "rejected") {
                 io.emit("chat_rejected_astrolgoer", data);
                 io.emit("chat_rejected", data);
               }
@@ -153,31 +152,8 @@ async function socketHandler(io, pubClient, subClient) {
       ========================= */
 
       onSafe("chat_request", async (data) => {
-         // chat_started_user
-         console.log("Chat request data---------------------:", data);
-
-        // const userId = data.user_id;
-        // const astroId = sanitizeHtml(data.astro_id || "");
-        // const currentTimestamp = Date.now();
-
-        // if (sentRequests[userId]) {
-        //   const timeElapsed =
-        //     currentTimestamp - sentRequests[userId].timestamp;
-
-        //   if (timeElapsed < requestCooldown) {
-        //     return safeEmit(socket, "check_duplicate_request", {
-        //       message: `${sanitizeHtml(
-        //         data.userName || ""
-        //       )}, you've already sent a chat request. Please wait.`,
-        //     });
-        //   }
-        // }
-
-        // sentRequests[userId] = { timestamp: currentTimestamp };
-
-        // setTimeout(() => delete sentRequests[userId], requestCooldown);
-         const astroId=156983;
-        safePublish(pubClient, "chat_requests", {
+          const astroId=156983;
+          safePublish(pubClient, "chat_requests", {
           message: "Chat request sent successfully",
           userName: sanitizeHtml(data.userName || ""),
           gender: data.gender,
@@ -200,13 +176,9 @@ async function socketHandler(io, pubClient, subClient) {
       ========================= */
 
       onSafe("joinChat", (data) => {
-        console.log("Join chat data---------------------:", data);
         userJoinGroup(data.username, data.room_id);
-        console.log("Current users in rooms111:");
         socket.join(String(data.room_id));
-
         socket.roomId = String(data.room_id);
-        console.log("Current users in rooms2222:");
         safePublish(pubClient, "userJoinedChat", {
           message: `${data.username} has joined the chat.`,
           roomid: String(data.room_id),

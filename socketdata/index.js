@@ -214,9 +214,9 @@ socket.on("send_message", (data) => {
   try {
     const formattedMessage = {
       msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`, 
-      sender_id: data.sender_id || null,  
+      sender_id: "68596712-a2c4-435a-8ff1-4e520272c48e",  
       room_id: data.room_id,
-      received_id: data.received_id || null, 
+      received_id: "156983" , 
       message: data.message,               
       image: data.image || null,
       sender: data.sender,                 

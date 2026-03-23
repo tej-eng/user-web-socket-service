@@ -189,23 +189,54 @@ async function socketHandler(io, pubClient, subClient) {
          Send Message
       ========================= */
 
-      onSafe("send_message", async (data) => {
-        const message = {
-          senderId: data.sender_id,
-          message: sanitizeHtml(data.message),
-          time: Date.now(),
-        };
+      // onSafe("send_message", async (data) => {
+      //   console.log("Received message:", data); 
+      //   const message = {
+      //     senderId: data.sender_id,
+      //     message: sanitizeHtml(data.message),
+      //     time: Date.now(),
+      //   };
 
-        await pubClient.rPush(
-          `chat_messages:${data.room_id}`,
-          JSON.stringify(message)
-        );
+      //   await pubClient.rPush(
+      //     `chat_messages:${data.room_id}`,
+      //     JSON.stringify(message)
+      //   );
 
-        safePublish(pubClient, "messages", {
-          ...data,
-          message,
-        });
-      });
+      //   safePublish(pubClient, "messages", {
+      //     ...data,
+      //     message,
+      //   });
+
+      // });
+
+
+socket.on("send_message", (data) => {
+  try {
+    const formattedMessage = {
+      msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`, 
+      sender_id: data.sender_id || null,  
+      room_id: data.room_id,
+      received_id: data.received_id || null, 
+      message: data.message,               
+      image: data.image || null,
+      sender: data.sender,                 
+      replyTo: data.replyTo || null,
+      time: new Date().toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }),
+    };
+
+    console.log("[Formatted Message]:", formattedMessage);
+    safePublish(pubClient, "messages", JSON.stringify(formattedMessage));
+   // io.to(data.room_id).emit("receive_message", formattedMessage);
+
+  } catch (error) {
+    console.error("Error sending message:", error);
+  }
+});
 
       /* =========================
          Chat Completed

@@ -245,7 +245,7 @@ socket.on("send_message", (data) => {
       socket.on("complted_chat", async (data) => {
         try {
           const roomId = data.room_id;
-
+           console.log("Completing chat for room:", roomId);
           const messages = await pubClient.lRange(
             `chat_messages:${roomId}`,
             0,

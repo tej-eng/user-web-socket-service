@@ -1,31 +1,603 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-
 }
 
 datasource db {
- provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  INTERVIEW
+  DOCUMENT_VERIFICATION
+  APPROVED
+  REJECTED
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  PASSED
+  FAILED
+  RESCHEDULED
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DocumentType {
+  ID_PROOF
+  CERTIFICATE
+  EXPERIENCE_PROOF
+}
+
+enum RejectionStage {
+  PROFILE
+  INTERVIEW
+  DOCUMENT
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  countryCode   String?   
+  mobile        String?   @unique
+  gender        Gender?
+  birthDate     DateTime?
+  birthTime     String?
+  occupation    String?
+  isActive      Boolean   @default(true)
+  isDeleted     Boolean   @default(false)
+  refreshToken  String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  Intake        Intake[]
+  wallet        UserWallet?
+  payments      Payment[]
+  paymentOrders PaymentOrder[]
+  sessions      Session[]
+
+ @@unique([countryCode, mobile])
+}
+
+model Intake {
+  id           String   @id @default(uuid())
+  userId       String
+  astrologerId String
+  chatId       String?
+  name         String
+  countryCode String
+  mobile       String
+  gender       Gender?
+  birthDate    DateTime
+  birthTime    String
+  occupation   String
+  birthPlace   String
+  requestType  String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([astrologerId])
+}
+
+model Astrologer {
+  id             String         @id @default(uuid())
+  profilePic     String
+  name           String
+  dateOfBirth    DateTime
+  gender         Gender
+  languages      String[]
+  skills         String[]
+  experience     Int
+  email          String         @unique
+  contactNo      String
+  about          String
+  approvalStatus ApprovalStatus @default(PENDING)
+  adminRemarks   String?
+  price          Int?           @default(0)
+  rating         Float?         @default(0)
+  status         Boolean        @default(false)
+  addresses        Address[]
+  experiences      ExperiencePlatform[]
+  interviews       Interview[]
+  documents        AstrologerDocument[]
+  rejectionHistory AstrologerRejectionHistory[]
+
+  approvedById String?
+  approvedBy   Admin?  @relation(fields: [approvedById], references: [id])
+  wallet         AstrologerWallet?
+  sessions       Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([approvalStatus])
+  @@index([price])
+  @@index([rating])
+  @@index([experience])
+}
+
+model AstrologerApproved {
+  id         Int     @id @default(autoincrement())
+  name       String
+  profilePic String
+  experience Int
+  isActive   Boolean @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([name])           
+  @@index([experience])     
+  @@index([isActive])       
+}
+
+model Address {
+  id           Int        @id @default(autoincrement())
+  astrologerId String
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+
+  street  String
+  city    String
+  state   String
+  country String
+  pincode String
+
+  @@index([astrologerId])  
+  @@index([city])           
+  @@index([pincode])        
+}
+
+model ExperiencePlatform {
+  id           Int        @id @default(autoincrement())
+  astrologerId String
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+
+  platformName String
+  yearsWorked  Int
+
+  @@index([astrologerId])   
+  @@index([platformName])   
+}
+
+model Interview {
+  id             Int             @id @default(autoincrement())
+  astrologerId   String
+  astrologer     Astrologer      @relation(fields: [astrologerId], references: [id])
+
+  roundNumber     Int
+  interviewerName String
+  scheduledAt     DateTime
+  status          InterviewStatus @default(SCHEDULED)
+  remarks         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([astrologerId])                     
+  @@index([scheduledAt])                      
+  @@index([status])                           
+  @@unique([astrologerId, roundNumber])      
+}
+
+model AstrologerDocument {
+  id           Int          @id @default(autoincrement())
+  astrologerId String
+  astrologer   Astrologer   @relation(fields: [astrologerId], references: [id])
+
+  documentType DocumentType
+  documentUrl  String
+  status       DocumentStatus @default(PENDING)
+  verifiedBy   String?
+  verifiedAt   DateTime?
+  remarks      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([astrologerId])                     
+  @@index([status])                           
+  @@unique([astrologerId, documentType])     
+}
+
+model AstrologerRejectionHistory {
+  id           Int        @id @default(autoincrement())
+  astrologerId String
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+
+  stage      RejectionStage
+  reason     String
+  rejectedBy String
+
+  createdAt DateTime @default(now())
+
+  @@index([astrologerId])  
+  @@index([stage])          
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  SUB_ADMIN
+  MANAGER
+  SUPPORT
+}
+
+model Admin {
+  id                  String       @id @default(uuid())
+  name                String
+  email               String       @unique
+  phoneNo             String       @unique
+  department          String?
+  roleId              String
+  password            String?      // hashed password
+  isActive            Boolean      @default(true)
+  isDeleted           Boolean      @default(false)
+  refreshToken        String?      @db.Text
+  approvedAstrologers Astrologer[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])       
+  @@index([isActive])     
+  @@index([isDeleted])  
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  permissions RolePermission[]
+
+  admins      Admin[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])        
+  @@index([createdAt])   
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([name])       
+  @@index([createdAt])  
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])   
+  @@index([roleId])                   
+  @@index([permissionId])             
+}
+
+model RechargePack {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  coins        Int
+  talktime     Int
+  validityDays Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions WalletTransaction[]
+  payments     Payment[]
+  paymentOrders PaymentOrder[]
+  coupons       Coupon[]
+  @@index([isActive])
+  @@index([price])
+  @@index([coins])
+  @@index([createdAt])
+}
+
+model UserWallet {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+
+  balanceCoins Float      @default(0)
+  lockedCoins  Float      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions WalletTransaction[]
+}
+
+model AstrologerWallet {
+  id              String     @id @default(uuid())
+  astrologerId    String     @unique
+  astrologer      Astrologer @relation(fields: [astrologerId], references: [id])
+  balanceCoins    Float        @default(0)
+  totalEarned     Int        @default(0)
+  totalWithdrawn  Int        @default(0)
+   withdrawals     Withdrawal[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  transactions WalletTransaction[]
+
+  @@index([astrologerId])
+}
+
+model WalletTransaction {
+  id                String   @id @default(uuid())
+
+  userWalletId      String?
+  userWallet        UserWallet? @relation(fields: [userWalletId], references: [id])
+
+  astrologerWalletId String?
+  astrologerWallet   AstrologerWallet? @relation(fields: [astrologerWalletId], references: [id])
+
+  rechargePackId    String?
+  rechargePack      RechargePack? @relation(fields: [rechargePackId], references: [id])
+
+  sessionId         String?
+  session           Session? @relation(fields: [sessionId], references: [id])
+
+  //  ADD THIS (CRITICAL)
+  paymentId         String?
+  payment           Payment? @relation(fields: [paymentId], references: [id])
+
+  type              TransactionType
+  coins             Int
+  amount            Float?
+  description       String?
+
+  createdAt         DateTime @default(now())
+
+  @@index([userWalletId])
+  @@index([astrologerWalletId])
+  @@index([sessionId])
+  @@index([paymentId])
+  @@index([createdAt])
+
+  //  PREVENT duplicate credit from same payment
+  @@unique([paymentId, type])
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+model Withdrawal {
+  id                String @id @default(uuid())
+
+  astrologerWalletId String
+  astrologerWallet  AstrologerWallet @relation(fields: [astrologerWalletId], references: [id])
+
+  amount            Float
+  coins             Int
+
+  status            WithdrawalStatus
+
+  requestedAt       DateTime @default(now())
+  processedAt       DateTime?
+
+  transactionRef    String?
+
+  @@index([astrologerWalletId])
+  @@index([status])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model Session {
+  id            String   @id @default(uuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  astrologerId  String
+  astrologer    Astrologer @relation(fields: [astrologerId], references: [id])
+
+  type          SessionType
+  status        SessionStatus
+
+  ratePerMin    Int
+  durationSec   Int      @default(0)
+
+  coinsDeducted Int      @default(0)
+  coinsEarned   Int      @default(0)
+  commission    Int      @default(0)
+
+  startedAt     DateTime?
+  endedAt       DateTime?
+
+  createdAt     DateTime @default(now())
+
+  transactions  WalletTransaction[]
+
+  messages      Message[]
+
+  @@index([userId])
+  @@index([astrologerId])
+  @@index([status])
+  @@index([createdAt])
+}
+enum SessionType {
+  CHAT
+  CALL
+}
+
+enum SessionStatus {
+  REQUESTED
+  ACCEPTED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+
+  rechargePackId    String
+  rechargePack      RechargePack @relation(fields: [rechargePackId], references: [id])
+
+  paymentOrderId    String   @unique
+  paymentOrder      PaymentOrder @relation(fields: [paymentOrderId], references: [id])
+
+  amount            Float
+  coins             Int
+
+  provider          PaymentProvider
+
+  razorpayOrderId   String
+  razorpayPaymentId String   @unique
+
+  status            PaymentStatus
+
+  createdAt         DateTime @default(now())
+
+  // ADD THIS
+  walletTransactions WalletTransaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([razorpayOrderId])
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  CASHFREE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+enum PaymentOrderStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
+model PaymentOrder {
+  id              String   @id @default(uuid())
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  rechargePackId  String
+  rechargePack    RechargePack @relation(fields: [rechargePackId], references: [id])
+
+  razorpayOrderId String   @unique
+
+  amount          Float
+  coins           Int
+
+  status          PaymentOrderStatus @default(CREATED)
+
+  payment         Payment?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+model CommissionConfig {
+  id            String  @id @default(uuid())
+
+  chatPercent   Float
+  callPercent   Float
+
+  createdAt     DateTime @default(now())
+
+  // only one config active
+  @@unique([createdAt])
+}
+
+enum CouponType {
+  PERCENTAGE
+  FLAT
+}
+
+enum CouponVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Coupon {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  description   String?
+
+  type          CouponType
+  visibility    CouponVisibility
+  status        Boolean  @default(true)
+
+  percentage    Float?
+  flatAmount    Float?
+  maxDiscount   Float?
+
+  minOrderAmount Float?
+  redeemLimit   Int?
+  usedCount     Int      @default(0)
+
+  startDate     DateTime
+  endDate       DateTime
+
+  rechargePacks RechargePack[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
 
 model Message {
-  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  user_id            Int      @default(0)
-  receiver_id          Int
-  msg_id          String   
-  replyTo      Json? 
-  message String 
-  sender String 
-  status            Int @default(1)
-  image             String
-  session_id String
-   created_at     DateTime @default(now())
-  updated_at     DateTime @default(now()) @updatedAt
+  id            String   @id @default(uuid())
+
+  msgId         String
+  roomId        String
+
+  senderId      String
+  receiverId    String?
+
+  message       String
+  image         String?
+  sender        String
+
+  replyTo       Json?
+
+  sessionId     String?
+  session       Session? @relation(fields: [sessionId], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  @@index([roomId])
+  @@index([sessionId])
+  @@index([senderId])
 }

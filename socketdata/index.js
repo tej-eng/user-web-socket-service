@@ -3,7 +3,8 @@ import sanitizeHtml from "sanitize-html";
 import fs from "fs/promises";
 import path from "path";
 import { log } from "console";
-import { connectMongo } from "../config/mongo.js";
+//import { connectMongo } from "../config/mongo.js";
+import prisma from "../config/prisma.js";
 
 /* =========================
    Socket State
@@ -210,7 +211,7 @@ async function socketHandler(io, pubClient, subClient) {
       // });
 
 
-socket.on("send_message", (data) => {
+socket.on("send_message", async (data) => {
   try {
     const formattedMessage = {
       msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`, 
@@ -230,6 +231,18 @@ socket.on("send_message", (data) => {
     };
 
     console.log("[Formatted Message]:", formattedMessage);
+     await prisma.message.create({
+      data: {
+        msgId: formattedMessage.msg_id,
+        roomId: formattedMessage.room_id,
+        senderId: formattedMessage.sender_id,
+        receiverId: formattedMessage.received_id,
+        message: formattedMessage.message,
+        image: formattedMessage.image,
+        sender: formattedMessage.sender,
+        replyTo: formattedMessage.replyTo,
+      }
+    });
     safePublish(pubClient, "messages", JSON.stringify(formattedMessage));
    // io.to(data.room_id).emit("receive_message", formattedMessage);
 
@@ -243,33 +256,31 @@ socket.on("send_message", (data) => {
       ========================= */
 
       socket.on("complted_chat", async (data) => {
-        try {
-          const roomId = data.room_id;
-           console.log("Completing chat for room:", roomId);
-          const messages = await pubClient.lRange(
-            `chat_messages:${roomId}`,
-            0,
-            -1
-          );
+  try {
+    const roomId = data.room_id;
 
-          const parsedMessages = messages.map((m) => JSON.parse(m));
+    const activeChat = await pubClient.get(`active_chat:${roomId}`);
+    if (!activeChat) return;
 
-          const db = await connectMongo();
+    const parsed = JSON.parse(activeChat);
 
-          await db.collection("chat_history").insertOne({
-            roomId,
-            messages: parsedMessages,
-            endedAt: new Date(),
-          });
+    await prisma.session.update({
+      where: { id: parsed.sessionId },
+      data: {
+        status: "COMPLETED",
+        endedAt: new Date()
+      }
+    });
 
-          await pubClient.del(`chat_messages:${roomId}`);
+    // optional: delete redis cache
+    await pubClient.del(`active_chat:${roomId}`);
 
-          logEvent("chat_saved_to_mongodb", roomId);
-        } catch (error) {
-          logEvent("chat_save_error", error, true);
-        }
-      });
-     
+    console.log("Chat completed:", roomId);
+
+  } catch (error) {
+    console.error("chat complete error", error);
+  }
+});
       /* =========================
          Typing
       ========================= */

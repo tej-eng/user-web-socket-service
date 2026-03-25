@@ -5,6 +5,7 @@ import path from "path";
 import { log } from "console";
 //import { connectMongo } from "../config/mongo.js";
 import prisma from "../config/prisma.js";
+import { handleAcceptChat } from "../services/chatService.js";
 
 /* =========================
    Socket State
@@ -97,6 +98,16 @@ async function socketHandler(io, pubClient, subClient) {
           switch (ch) {
             case "chat_status":
               if (data.status === "Accepted") {
+                // --------------
+                try{
+                  const result = await handleAcceptChat(
+                  data.roomId,
+                  prisma,
+                  pubClient 
+             );
+                }catch(err){logEvent("ChatAcceptError", err.stack, true)}
+
+                //--------------
                 io.emit("chat_started_astrolgoer", data);
                 io.emit("chat_started_user", data);
               }
@@ -229,6 +240,7 @@ socket.on("send_message", async (data) => {
         hour12: true,
       }),
     };
+    //insert into  redis list 
 
     console.log("[Formatted Message]:", formattedMessage);
      await prisma.message.create({

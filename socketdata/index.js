@@ -101,7 +101,7 @@ async function socketHandler(io, pubClient, subClient) {
                 // --------------
                 try{
                   const result = await handleAcceptChat(
-                  data.roomId,
+                  data.roomid,
                   prisma,
                   pubClient 
              );

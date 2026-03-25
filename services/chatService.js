@@ -1,6 +1,7 @@
 // services/chatService.js
 
 export const handleAcceptChat = async (roomId, prisma, redis) => {
+  console.log("Handling chat acceptance for room:", roomId);
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId }
   });
@@ -23,6 +24,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
   });
 
   await redis.lPop(`chat_queue:${intake.astrologerId}`);
+  console.log("------------roomId-----------:", roomId);
 
   await redis.set(
     `active_chat:${roomId}`,

@@ -77,7 +77,7 @@ function safeEmit(ioOrSocket, event, payload) {
    Socket Handler
 ========================= */
 
-async function socketHandler(io, pubClient, subClient) {
+async function socketHandler(io, pubClient, subClient,redisClient) {
   try {
     const channels = [
       "chat_status",
@@ -102,7 +102,7 @@ async function socketHandler(io, pubClient, subClient) {
                   const result = await handleAcceptChat(
                   data.roomid,
                   prisma,
-                  pubClient 
+                  redisClient 
              );
                 }catch(err){logEvent("ChatAcceptError", err.stack, true)}
                // io.emit("chat_started_astrolgoer", data);
@@ -268,7 +268,7 @@ socket.on("send_message", async (data) => {
   try {
     const roomId = data.room_id;
 
-    const activeChat = await pubClient.get(`active_chat:${roomId}`);
+    const activeChat = await redisClient.get(`active_chat:${roomId}`);
     if (!activeChat) return;
 
     const parsed = JSON.parse(activeChat);
@@ -282,7 +282,7 @@ socket.on("send_message", async (data) => {
     });
 
     // optional: delete redis cache
-    await pubClient.del(`active_chat:${roomId}`);
+    await redisClient.del(`active_chat:${roomId}`);
 
     console.log("Chat completed:", roomId);
 

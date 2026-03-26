@@ -5,7 +5,7 @@ import path from "path";
 import { log } from "console";
 //import { connectMongo } from "../config/mongo.js";
 import prisma from "../config/prisma.js";
-import { handleAcceptChat } from "../services/chatService.js";
+import { handleAcceptChat,finalizeChatSession } from "../services/chatService.js";
 
 /* =========================
    Socket State
@@ -131,6 +131,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
             case "end_chat_by_astrologer":
               io.to(data.roomId).emit("leave_chat", data);
+              await finalizeChatSession(data.roomId, prisma, redisClient);
+              //---------need to implement get data from redis and put to db and delete redis key
               break;
 
             case "astrologer_disconnected":
@@ -262,52 +264,9 @@ socket.on("send_message", async (data) => {
 
    socket.on("complted_chat", async (data) => {
   try {
+    console.log("Chat completion requested for room:", data.room_id);
     const roomId = data.room_id;
-
-    // GET ALL MESSAGES FROM REDIS
-    const messages = await redisClient.lRange(
-      `chat_messages:${roomId}`,
-      0,
-      -1
-    );
-
-    const parsedMessages = messages.map(m => JSON.parse(m));
-
-    console.log("Messages to store:", parsedMessages.length);
-
-    // SAVE ALL TO DB (BULK INSERT)
-    if (parsedMessages.length > 0) {
-      await prisma.message.createMany({
-        data: parsedMessages.map(msg => ({
-          msgId: msg.msg_id,
-          roomId: msg.room_id,
-          senderId: msg.sender_id,
-          receiverId: msg.received_id,
-          message: msg.message,
-          image: msg.image,
-          sender: msg.sender,
-          replyTo: msg.replyTo,
-        }))
-      });
-    }
-
-    await redisClient.del(`chat_messages:${roomId}`);
-
-    const activeChat = await redisClient.get(`active_chat:${roomId}`);
-    if (activeChat) {
-      const parsed = JSON.parse(activeChat);
-
-      await prisma.session.update({
-        where: { id: parsed.sessionId },
-        data: {
-          status: "COMPLETED",
-          endedAt: new Date()
-        }
-      });
-
-      await redisClient.del(`active_chat:${roomId}`);
-    }
-
+   await finalizeChatSession(roomId, prisma, redisClient);
     console.log("Chat saved to DB & cleared from Redis:", roomId);
 
   } catch (error) {

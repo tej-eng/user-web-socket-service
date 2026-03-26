@@ -50,3 +50,72 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   return session;
 };
+export const finalizeChatSession = async (roomId, prisma, redis) => {
+  try {
+    console.log("Finalizing chat for room:", roomId);
+
+    /* =========================
+        GET ALL MESSAGES FROM REDIS
+    ========================= */
+    const messages = await redis.lRange(
+      `chat_messages:${roomId}`,
+      0,
+      -1
+    );
+
+    const parsedMessages = messages.map(m => JSON.parse(m));
+
+    console.log("Messages to store:", parsedMessages.length);
+
+    /* =========================
+       SAVE TO DB (BULK)
+    ========================= */
+    if (parsedMessages.length > 0) {
+      await prisma.message.createMany({
+        data: parsedMessages.map(msg => ({
+          msgId: msg.msg_id,
+          roomId: msg.room_id,
+          senderId: msg.sender_id,
+          receiverId: msg.received_id,
+          message: msg.message,
+          image: msg.image,
+          sender: msg.sender,
+          replyTo: msg.replyTo,
+        })),
+        skipDuplicates: true 
+      });
+    }
+
+    /* =========================
+       DELETE REDIS CHAT LIST
+    ========================= */
+    await redis.del(`chat_messages:${roomId}`);
+
+    /* =========================
+       COMPLETE SESSION
+    ========================= */
+    const activeChat = await redis.get(`active_chat:${roomId}`);
+
+    if (activeChat) {
+      const parsed = JSON.parse(activeChat);
+
+      await prisma.session.update({
+        where: { id: parsed.sessionId },
+        data: {
+          status: "COMPLETED",
+          endedAt: new Date()
+        }
+      });
+
+      await redis.del(`active_chat:${roomId}`);
+    }
+
+    console.log("Chat finalized successfully:", roomId);
+
+    return true;
+
+  } catch (error) {
+    console.error("finalizeChatSession error:", error);
+    throw error;
+  }
+};

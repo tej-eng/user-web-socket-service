@@ -223,9 +223,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
 socket.on("send_message", async (data) => {
   try {
-    console.log("Received message send message:", data);
     const formattedMessage = {
-      msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`,
+      msg_id: data.msg_id || `${Date.now()}${Math.random()}`, 
       sender_id: data.sender_id,
       room_id: data.room_id,
       received_id: data.received_id,
@@ -233,25 +232,16 @@ socket.on("send_message", async (data) => {
       image: data.image || null,
       sender: data.sender,
       replyTo: data.replyTo || null,
-      time: Date.now()
+      time: data.time || Date.now(),
     };
 
-    console.log("[LIVE MESSAGE]:", formattedMessage);
-
-    //  STORE IN REDIS LIST (LIVE CHAT)
+    // store in redis
     await redisClient.rPush(
       `chat_messages:${data.room_id}`,
       JSON.stringify(formattedMessage)
     );
 
-    // Optional: limit messages (avoid memory issue)
-    await redisClient.lTrim(
-      `chat_messages:${data.room_id}`,
-      -200,
-      -1
-    );
-
-    //  REALTIME SEND
+    // publish
     safePublish(pubClient, "messages", formattedMessage);
 
   } catch (error) {

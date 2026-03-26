@@ -26,15 +26,10 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   console.log("Session created:", session.id);
 
-  // ✅ REDIS v4 SAFE MULTI
+  //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
 
-  multi.sendCommand([
-    "LREM",
-    `chat_queue:${intake.astrologerId}`,
-    "1",
-    roomId
-  ]);
+  multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId);
 
   multi.set(
     `active_chat:${roomId}`,

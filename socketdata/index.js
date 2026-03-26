@@ -223,6 +223,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
 socket.on("send_message", async (data) => {
   try {
+    console.log("Received message send message:", data);
     const formattedMessage = {
       msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`,
       sender_id: data.sender_id,

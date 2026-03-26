@@ -98,7 +98,6 @@ async function socketHandler(io, pubClient, subClient) {
           switch (ch) {
             case "chat_status":
               if (data.status === "Accepted") {
-                // --------------
                 try{
                   const result = await handleAcceptChat(
                   data.roomid,
@@ -106,9 +105,7 @@ async function socketHandler(io, pubClient, subClient) {
                   pubClient 
              );
                 }catch(err){logEvent("ChatAcceptError", err.stack, true)}
-
-                //--------------
-                io.emit("chat_started_astrolgoer", data);
+               // io.emit("chat_started_astrolgoer", data);
                 io.emit("chat_started_user", data);
               }
 

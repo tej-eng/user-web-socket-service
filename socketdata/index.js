@@ -222,38 +222,34 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 socket.on("send_message", async (data) => {
   try {
     const formattedMessage = {
-      msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`, 
-      sender_id: "68596712-a2c4-435a-8ff1-4e520272c48e",  
+      msg_id: `${Date.now()}${Math.floor(Math.random() * 100000)}`,
+      sender_id: data.sender_id,
       room_id: data.room_id,
-      received_id: "156983" , 
-      message: data.message,               
+      received_id: data.received_id,
+      message: data.message,
       image: data.image || null,
-      sender: data.sender,                 
+      sender: data.sender,
       replyTo: data.replyTo || null,
-      time: new Date().toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      }),
+      time: Date.now()
     };
-    //insert into  redis list 
 
-    console.log("[Formatted Message]:", formattedMessage);
-     await prisma.message.create({
-      data: {
-        msgId: formattedMessage.msg_id,
-        roomId: formattedMessage.room_id,
-        senderId: formattedMessage.sender_id,
-        receiverId: formattedMessage.received_id,
-        message: formattedMessage.message,
-        image: formattedMessage.image,
-        sender: formattedMessage.sender,
-        replyTo: formattedMessage.replyTo,
-      }
-    });
-    safePublish(pubClient, "messages", JSON.stringify(formattedMessage));
-   // io.to(data.room_id).emit("receive_message", formattedMessage);
+    console.log("[LIVE MESSAGE]:", formattedMessage);
+
+    //  STORE IN REDIS LIST (LIVE CHAT)
+    await redisClient.rPush(
+      `chat_messages:${data.room_id}`,
+      JSON.stringify(formattedMessage)
+    );
+
+    // Optional: limit messages (avoid memory issue)
+    await redisClient.lTrim(
+      `chat_messages:${data.room_id}`,
+      -200,
+      -1
+    );
+
+    //  REALTIME SEND
+    safePublish(pubClient, "messages", formattedMessage);
 
   } catch (error) {
     console.error("Error sending message:", error);
@@ -264,27 +260,55 @@ socket.on("send_message", async (data) => {
          Chat Completed
       ========================= */
 
-      socket.on("complted_chat", async (data) => {
+   socket.on("complted_chat", async (data) => {
   try {
     const roomId = data.room_id;
 
+    // GET ALL MESSAGES FROM REDIS
+    const messages = await redisClient.lRange(
+      `chat_messages:${roomId}`,
+      0,
+      -1
+    );
+
+    const parsedMessages = messages.map(m => JSON.parse(m));
+
+    console.log("Messages to store:", parsedMessages.length);
+
+    // SAVE ALL TO DB (BULK INSERT)
+    if (parsedMessages.length > 0) {
+      await prisma.message.createMany({
+        data: parsedMessages.map(msg => ({
+          msgId: msg.msg_id,
+          roomId: msg.room_id,
+          senderId: msg.sender_id,
+          receiverId: msg.received_id,
+          message: msg.message,
+          image: msg.image,
+          sender: msg.sender,
+          replyTo: msg.replyTo,
+        }))
+      });
+    }
+
+    await redisClient.del(`chat_messages:${roomId}`);
+
     const activeChat = await redisClient.get(`active_chat:${roomId}`);
-    if (!activeChat) return;
+    if (activeChat) {
+      const parsed = JSON.parse(activeChat);
 
-    const parsed = JSON.parse(activeChat);
+      await prisma.session.update({
+        where: { id: parsed.sessionId },
+        data: {
+          status: "COMPLETED",
+          endedAt: new Date()
+        }
+      });
 
-    await prisma.session.update({
-      where: { id: parsed.sessionId },
-      data: {
-        status: "COMPLETED",
-        endedAt: new Date()
-      }
-    });
+      await redisClient.del(`active_chat:${roomId}`);
+    }
 
-    // optional: delete redis cache
-    await redisClient.del(`active_chat:${roomId}`);
-
-    console.log("Chat completed:", roomId);
+    console.log("Chat saved to DB & cleared from Redis:", roomId);
 
   } catch (error) {
     console.error("chat complete error", error);

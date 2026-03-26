@@ -70,8 +70,8 @@ await pubClient.connect();
 await subClient.connect();
 await redisClient.connect();
 
-console.log("✅ Redis Pub/Sub Connected");
-console.log("✅ Redis Main Client Connected");
+console.log(" Redis Pub/Sub Connected");
+console.log(" Redis Main Client Connected");
 
 // Attach adapter
 io.adapter(createAdapter(pubClient, subClient));
@@ -114,7 +114,7 @@ const jwtAuthMiddleware = (socket, next) => {
 const dhwaniNamespace = io.of("/dhwani-astro");
 dhwaniNamespace.use(jwtAuthMiddleware);
 
-// ✅ PASS redisClient here (IMPORTANT FIX)
+//  PASS redisClient here (IMPORTANT FIX)
 socketHandler(dhwaniNamespace, pubClient, subClient, redisClient);
 
 /* ==============================

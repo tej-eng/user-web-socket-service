@@ -150,7 +150,10 @@ export const processNextChat = async (
       // Try next user recursively
       return await processNextChat(astrologerId, redis, pubClient);
     }
-
+ 
+    const data = await redis.get(`chat_request_data:${nextRoomId}`);
+    const parsed = JSON.parse(data);
+    console.log("Parsed chat request data:", parsed);
     // Send request to astrologer
     await pubClient.publish(
       "chat_requests",
@@ -158,7 +161,20 @@ export const processNextChat = async (
         room_id: nextRoomId,
         message: "New chat request from queue",
         status: "WAITING",
-        astrologerId
+        astrologerId: astrologerId,
+        userName: parsed.userName,
+        gender: parsed.gender,
+        dateOfBirth: parsed.dateOfBirth,
+        timeOfBirth: parsed.timeOfBirth,
+        placeOfBirth: parsed.placeOfBirth ,
+        occupation: parsed.occupation,
+        location: parsed.location,
+        astro_id:"156983",
+        user_id: parsed.userId,
+        is_promotional: parsed.isPromotional || false,
+        maximum_time: parsed.maximumTime || 0,
+       user_image: parsed.userImage || null,
+       phoneNumber: parsed.phoneNumber || null,
       })
     );
 

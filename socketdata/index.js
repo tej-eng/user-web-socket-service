@@ -220,7 +220,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     if (queueLength > 1) {
       return socket.emit("queue_position", {
         message: `You are in queue`,
-        position: position
+        position: queueLength
       });
     }
     console.log("User is first in queue, sending chat request to astrologer:", roomId);
@@ -240,7 +240,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       maximum_time: data.maximum_time,
       user_image: data.user_image,
       phoneNumber: "",
-      position: position
+      position: queueLength
     });
 
   } catch (err) {

@@ -203,6 +203,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
     //  If queue full (LIMIT = 5)
     if (queueLength >= 5) {
+      console.log("Queue full for astrologer:", astroId);
       return socket.emit("chat_rejected", {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"
@@ -222,7 +223,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
         position: position
       });
     }
-
+    console.log("User is first in queue, sending chat request to astrologer:", roomId);
     // If first user → send request to astrologer
     safePublish(pubClient, "chat_requests", {
       message: "Chat request sent successfully",

@@ -5,7 +5,7 @@ import path from "path";
 import { log } from "console";
 //import { connectMongo } from "../config/mongo.js";
 import prisma from "../config/prisma.js";
-import { handleAcceptChat,finalizeChatSession } from "../services/chatService.js";
+import { handleAcceptChat,finalizeChatSession,processNextChat } from "../services/chatService.js";
 
 /* =========================
    Socket State

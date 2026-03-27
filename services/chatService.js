@@ -159,7 +159,7 @@ export const processNextChat = async (
       "chat_requests",
       JSON.stringify({
         room_id: nextRoomId,
-        message: parsed.message,
+        message: "Chat request sent successfully", 
         astrologerId: astrologerId,
         userName: parsed.userName,
         gender: parsed.gender,

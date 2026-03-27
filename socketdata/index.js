@@ -211,13 +211,13 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
 
     //  Push into queue
-    await pubClient.rPush(queueKey, roomId);
+    //await pubClient.rPush(queueKey, roomId);
 
     //  Calculate position (after push)
-    const position = queueLength + 1;
+    //const position = queueLength + 1;
 
     //  If user is NOT first → send queue position
-    if (position > 1) {
+    if (queueLength > 1) {
       return socket.emit("queue_position", {
         message: `You are in queue`,
         position: position

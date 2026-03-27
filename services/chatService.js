@@ -160,7 +160,6 @@ export const processNextChat = async (
       JSON.stringify({
         room_id: nextRoomId,
         message: "Chat request sent successfully", 
-        astrologerId: astrologerId,
         userName: parsed.userName,
         gender: parsed.gender,
         dateOfBirth: parsed.dateOfBirth,
@@ -168,7 +167,7 @@ export const processNextChat = async (
         placeOfBirth: parsed.placeOfBirth ,
         occupation: parsed.occupation,
         location: parsed.location,
-        astro_id:"156983",
+        astro_id:156983,
         user_id: parsed.user_id,
         is_promotional: parsed.is_promotional || false,
         maximum_time: parsed.maximum_time || 0,

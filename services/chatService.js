@@ -164,15 +164,15 @@ export const processNextChat = async (
         gender: parsed.gender,
         dateOfBirth: parsed.dateOfBirth,
         timeOfBirth: parsed.timeOfBirth,
-        placeOfBirth: parsed.placeOfBirth ,
+        placeOfBirth: "2026-03-19" ,
         occupation: parsed.occupation,
         location: parsed.location,
         astro_id:156983,
         user_id: parsed.user_id,
-        is_promotional: parsed.is_promotional || false,
+        is_promotional: parsed.is_promotional || true,
         maximum_time: parsed.maximum_time || 0,
-       user_image: parsed.user_image || null,
-       phoneNumber: parsed.phoneNumber || null,
+       user_image: parsed.user_image || "",
+       phoneNumber: parsed.phoneNumber || "",
       })
     );
 

@@ -192,7 +192,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
   onSafe("chat_request", async (data) => {
   try {
-    const astroId = data.astro_id || 156983;
+    const astroId = 156983;
     const queueKey = `chat_queue:${astroId}`;
     const roomId = data.room_id;
 

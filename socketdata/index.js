@@ -132,7 +132,13 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
             case "end_chat_by_astrologer":
               io.to(data.roomId).emit("leave_chat", data);
               await finalizeChatSession(data.roomId, prisma, redisClient);
-              //---------need to implement get data from redis and put to db and delete redis key
+              // ✅ CALL NEXT CHAT
+              await processNextChat(
+                "156983",
+                redisClient,
+                pubClient
+              );
+              
               break;
 
             case "astrologer_disconnected":
@@ -162,25 +168,84 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
          Chat Request
       ========================= */
 
-      onSafe("chat_request", async (data) => {
-          const astroId=156983;
-          safePublish(pubClient, "chat_requests", {
-          message: "Chat request sent successfully",
-          userName: sanitizeHtml(data.userName || ""),
-          gender: data.gender,
-          dateOfBirth: data.dateOfBirth,
-          timeOfBirth: data.timeOfBirth,
-          occupation: sanitizeHtml(data.occupation || ""),
-          location: sanitizeHtml(data.location || ""),
-          astro_id: astroId,
-          user_id: data.user_id,
-          is_promotional: data.is_promotional,
-          room_id: data.room_id,
-          maximum_time: data.maximum_time,
-          user_image: data.user_image,
-          phoneNumber: "",
-        });
+      // onSafe("chat_request", async (data) => {
+      //     //check if queuepostion is greater then 0 then only publish otherwise emit to user queue position
+      //     const astroId=156983;
+      //     safePublish(pubClient, "chat_requests", {
+      //     message: "Chat request sent successfully",
+      //     userName: sanitizeHtml(data.userName || ""),
+      //     gender: data.gender,
+      //     dateOfBirth: data.dateOfBirth,
+      //     timeOfBirth: data.timeOfBirth,
+      //     occupation: sanitizeHtml(data.occupation || ""),
+      //     location: sanitizeHtml(data.location || ""),
+      //     astro_id: astroId,
+      //     user_id: data.user_id,
+      //     is_promotional: data.is_promotional,
+      //     room_id: data.room_id,
+      //     maximum_time: data.maximum_time,
+      //     user_image: data.user_image,
+      //     phoneNumber: "",
+      //   });
+      // });
+
+
+  onSafe("chat_request", async (data) => {
+  try {
+    const astroId = data.astro_id || 156983;
+    const queueKey = `chat_queue:${astroId}`;
+    const roomId = data.room_id;
+
+    // Get current queue length
+    const queueLength = await pubClient.lLen(queueKey);
+
+    console.log("Queue Length:", queueLength);
+
+    //  If queue full (LIMIT = 5)
+    if (queueLength >= 5) {
+      return socket.emit("chat_rejected", {
+        message: "Astrologer is busy. Please try another astrologer.",
+        status: "FULL"
       });
+    }
+
+    //  Push into queue
+    await pubClient.rPush(queueKey, roomId);
+
+    //  Calculate position (after push)
+    const position = queueLength + 1;
+
+    //  If user is NOT first → send queue position
+    if (position > 1) {
+      return socket.emit("queue_position", {
+        message: `You are in queue`,
+        position: position
+      });
+    }
+
+    // If first user → send request to astrologer
+    safePublish(pubClient, "chat_requests", {
+      message: "Chat request sent successfully",
+      userName: sanitizeHtml(data.userName || ""),
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      timeOfBirth: data.timeOfBirth,
+      occupation: sanitizeHtml(data.occupation || ""),
+      location: sanitizeHtml(data.location || ""),
+      astro_id: astroId,
+      user_id: data.user_id,
+      is_promotional: data.is_promotional,
+      room_id: roomId,
+      maximum_time: data.maximum_time,
+      user_image: data.user_image,
+      phoneNumber: "",
+      position: position
+    });
+
+  } catch (err) {
+    console.error("chat_request error:", err);
+  }
+});
 
       /* =========================
          Join Chat
@@ -259,6 +324,12 @@ socket.on("send_message", async (data) => {
     const roomId = data.room_id;
    await finalizeChatSession(roomId, prisma, redisClient);
     console.log("Chat saved to DB & cleared from Redis:", roomId);
+    // ✅ CALL NEXT CHAT
+    await processNextChat(
+      "156983", //astrologer id for testing
+      redisClient,
+      pubClient
+    );
 
   } catch (error) {
     console.error("chat complete error", error);

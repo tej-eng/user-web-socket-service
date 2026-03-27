@@ -119,3 +119,66 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     throw error;
   }
 };
+
+// services/chatService.js
+export const processNextChat = async (
+  astrologerId,
+  redis,
+  pubClient
+) => {
+  try {
+    const queueKey = `chat_queue:${astrologerId}`;
+
+    //  Get next roomId
+    const nextRoomId = await redis.lIndex(queueKey, 0);
+
+    if (!nextRoomId) {
+      console.log("No users in queue for astrologer:", astrologerId);
+      return null;
+    }
+
+    console.log("Next roomId from queue:", nextRoomId);
+
+    // PREVENT DUPLICATE / ALREADY ACTIVE CHAT
+    const isActive = await redis.exists(`active_chat:${nextRoomId}`);
+    if (isActive) {
+      console.log("Room already active, skipping:", nextRoomId);
+
+      // OPTIONAL: remove it from queue (cleanup)
+      await redis.lRem(queueKey, 1, nextRoomId);
+
+      // Try next user recursively
+      return await processNextChat(astrologerId, redis, pubClient);
+    }
+
+    // Send request to astrologer
+    await pubClient.publish(
+      "chat_requests",
+      JSON.stringify({
+        room_id: nextRoomId,
+        message: "New chat request from queue",
+        status: "WAITING",
+        astrologerId
+      })
+    );
+
+    // Update queue positions (optional but useful)
+    const queue = await redis.lRange(queueKey, 0, -1);
+
+    queue.forEach((roomId, index) => {
+      pubClient.publish(
+        "queue_update",
+        JSON.stringify({
+          roomId,
+          position: index + 1
+        })
+      );
+    });
+
+    return nextRoomId;
+
+  } catch (error) {
+    console.error("processNextChat error:", error);
+    return null;
+  }
+};

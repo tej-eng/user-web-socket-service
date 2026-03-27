@@ -171,8 +171,8 @@ export const processNextChat = async (
         user_id: parsed.user_id,
         is_promotional: parsed.is_promotional || true,
         maximum_time: parsed.maximum_time || 0,
-       user_image: parsed.user_image || "",
-       phoneNumber: parsed.phoneNumber || "",
+        user_image: parsed.user_image || "",
+        phoneNumber: parsed.phoneNumber || "",
       })
     );
 

@@ -159,8 +159,7 @@ export const processNextChat = async (
       "chat_requests",
       JSON.stringify({
         room_id: nextRoomId,
-        message: "New chat request from queue",
-        status: "WAITING",
+        message: parsed.message,
         astrologerId: astrologerId,
         userName: parsed.userName,
         gender: parsed.gender,
@@ -170,10 +169,10 @@ export const processNextChat = async (
         occupation: parsed.occupation,
         location: parsed.location,
         astro_id:"156983",
-        user_id: parsed.userId,
-        is_promotional: parsed.isPromotional || false,
-        maximum_time: parsed.maximumTime || 0,
-       user_image: parsed.userImage || null,
+        user_id: parsed.user_id,
+        is_promotional: parsed.is_promotional || false,
+        maximum_time: parsed.maximum_time || 0,
+       user_image: parsed.user_image || null,
        phoneNumber: parsed.phoneNumber || null,
       })
     );

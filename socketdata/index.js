@@ -143,7 +143,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               } catch (err) {
                 console.error("Delayed processNextChat error:", err);
               }
-            }, 12000);
+            }, 8000);
               
               break;
 

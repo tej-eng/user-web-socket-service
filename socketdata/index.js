@@ -108,7 +108,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
                // io.emit("chat_started_astrolgoer", data);
                 io.emit("chat_started_user", data);
               }
-
               if (data.status === "rejected") {
                 io.emit("chat_rejected_astrolgoer", data);
                 io.emit("chat_rejected", data);

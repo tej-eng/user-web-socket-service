@@ -132,12 +132,18 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
             case "end_chat_by_astrologer":
               io.to(data.roomId).emit("leave_chat", data);
               await finalizeChatSession(data.roomId, prisma, redisClient);
-              // ✅ CALL NEXT CHAT
-              await processNextChat(
-                "156983",
-                redisClient,
-                pubClient
-              );
+              
+            setTimeout(async () => {
+              try {
+                await processNextChat(
+                  "156983",
+                  redisClient,
+                  pubClient
+                );
+              } catch (err) {
+                console.error("Delayed processNextChat error:", err);
+              }
+            }, 12000);
               
               break;
 

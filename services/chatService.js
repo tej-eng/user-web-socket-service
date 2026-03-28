@@ -28,8 +28,8 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-
-  multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId);
+ multi.lRem(`chat_queue:156983`, 1, roomId);  //used for testing
+  //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
 
   multi.set(
     `active_chat:${roomId}`,
@@ -42,7 +42,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
     { EX: 3600 }
   );
 
-  multi.del(`chat_request:${roomId}`);
+  multi.del(`chat_request_data:${roomId}`);
 
   await multi.exec();
 

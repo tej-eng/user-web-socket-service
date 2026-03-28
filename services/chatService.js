@@ -152,10 +152,14 @@ export const processNextChat = async (
     }
  
     const data = await redis.get(`chat_request_data:${nextRoomId}`);
+    if (data) {
+      await redis.del(`chat_request_data:${nextRoomId}`);
+    }
+
     const parsed = JSON.parse(data);
     console.log("Parsed chat request data:", parsed);
     // Send request to astrologer
-    await pubClient.publish(
+   const result = await pubClient.publish(
       "chat_requests",
       JSON.stringify({
         room_id: nextRoomId,
@@ -175,6 +179,9 @@ export const processNextChat = async (
         phoneNumber: parsed.phoneNumber || "",
       })
     );
+    if(result){
+      console.log("Chat request published to astrologer:", nextRoomId);
+    }
 
     // Update queue positions (optional but useful)
     const queue = await redis.lRange(queueKey, 0, -1);

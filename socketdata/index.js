@@ -103,10 +103,13 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
                   data.roomid,
                   prisma,
                   redisClient 
-             );
+                 );
+                 if(result){
+                io.emit("chat_started_user", data);
+                 }
                 }catch(err){logEvent("ChatAcceptError", err.stack, true)}
                // io.emit("chat_started_astrolgoer", data);
-                io.emit("chat_started_user", data);
+                
               }
               if (data.status === "rejected") {
                 io.emit("chat_rejected_astrolgoer", data);

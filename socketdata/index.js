@@ -92,7 +92,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       await subClient.pSubscribe(channel, async (message, ch) => {
         try {
           logEvent(`Redis:${ch}`, message);
-
           const data = JSON.parse(message);
 
           switch (ch) {
@@ -105,10 +104,9 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
                   redisClient 
                  );
                  if(result){
-                io.emit("chat_started_user", data);
+                io.emit("chatAcceptedByAstrologer", data);
                  }
                 }catch(err){logEvent("ChatAcceptError", err.stack, true)}
-               // io.emit("chat_started_astrolgoer", data);
                 
               }
               if (data.status === "rejected") {

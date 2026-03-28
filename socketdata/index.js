@@ -328,7 +328,8 @@ socket.on("send_message", async (data) => {
 
    socket.on("complted_chat", async (data) => {
   try {
-    console.log("Chat completion requested for room:", data.room_id);
+   console.log("-------------complted_chat-------------");
+
     const roomId = data.room_id;
    await finalizeChatSession(roomId, prisma, redisClient);
     console.log("Chat saved to DB & cleared from Redis:", roomId);

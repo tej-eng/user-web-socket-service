@@ -5,7 +5,7 @@ import path from "path";
 import { log } from "console";
 //import { connectMongo } from "../config/mongo.js";
 import prisma from "../config/prisma.js";
-import { handleAcceptChat,finalizeChatSession,processNextChat } from "../services/chatService.js";
+import { handleAcceptChat,finalizeChatSession,processNextChat ,handleRejectChat} from "../services/chatService.js";
 
 /* =========================
    Socket State
@@ -110,7 +110,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
                 
               }
               if (data.status === "rejected") {
-                io.emit("chat_rejected_astrolgoer", data);
+               await handleRejectChat(data.roomid, prisma, redisClient);
+               // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
               }
               break;

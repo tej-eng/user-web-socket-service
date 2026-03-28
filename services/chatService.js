@@ -203,3 +203,32 @@ export const processNextChat = async (
     return null;
   }
 };
+export const handleRejectChat = async (roomId, prisma, redis) => {
+  try {
+    console.log("Handling chat rejection for room:", roomId);
+
+    const intake = await prisma.intake.findFirst({
+      where: { chatId: roomId }
+    });
+
+    const multi = redis.multi();
+
+    if (intake) {
+      //multi.lRem(`chat_queue:${intake.astrologerId}`, 0, roomId); //for production
+      multi.lRem(`chat_queue:156983`, 0, roomId);     //for testing
+    }
+
+    multi.del(`chat_request_data:${roomId}`);
+    //multi.del(`active_chat:${roomId}`);
+
+    await multi.exec();
+
+    console.log("Rejected chat cleaned:", roomId);
+
+    return intake ? intake.astrologerId : null;
+
+  } catch (error) {
+    console.error("handleRejectChat error:", error);
+    throw error;
+  }
+};

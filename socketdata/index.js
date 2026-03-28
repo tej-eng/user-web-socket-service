@@ -328,17 +328,39 @@ socket.on("send_message", async (data) => {
 
    socket.on("complted_chat", async (data) => {
   try {
+    
    console.log("-------------complted_chat-------------");
 
     const roomId = data.room_id;
    await finalizeChatSession(roomId, prisma, redisClient);
     console.log("Chat saved to DB & cleared from Redis:", roomId);
-    // ✅ CALL NEXT CHAT
+    // CALL NEXT CHAT
     await processNextChat(
       "156983", //astrologer id for testing
       redisClient,
       pubClient
     );
+    //-------publish completion to astrologer-------------------
+    socket.broadcast.to(roomId).emit("complted_chat", {
+          message: `User has left the ${roomId} chat.`,
+          roomId: roomId,
+          status: "leave",
+        });
+
+        socket.emit("complted_chat", {
+          message: `You have left the ${roomId} chat.`,
+          roomId: roomId,
+          status: "leave",
+        });
+        socket.leave(roomId);
+
+        pubClient.publish("end_chat_by_user", JSON.stringify({
+          message: `User has left the ${roomId} chat.`,
+          roomId: roomId,
+          status: "leave",
+          }));
+
+    //------------------------------
 
   } catch (error) {
     console.error("chat complete error", error);

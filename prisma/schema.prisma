@@ -65,7 +65,7 @@ model User {
   payments      Payment[]
   paymentOrders PaymentOrder[]
   sessions      Session[]
-
+  reviews Review[]
  @@unique([countryCode, mobile])
 }
 
@@ -118,6 +118,7 @@ model Astrologer {
   approvedBy   Admin?  @relation(fields: [approvedById], references: [id])
   wallet         AstrologerWallet?
   sessions       Session[]
+  reviews Review[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -435,7 +436,7 @@ model Session {
   transactions  WalletTransaction[]
 
   messages      Message[]
-
+  review Review?
   @@index([userId])
   @@index([astrologerId])
   @@index([status])
@@ -600,4 +601,28 @@ model Message {
   @@index([roomId])
   @@index([sessionId])
   @@index([senderId])
+}
+
+model Review {
+  id            String   @id @default(uuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+
+  astrologerId  String
+  astrologer    Astrologer @relation(fields: [astrologerId], references: [id])
+
+  sessionId     String?  @unique   // REQUIRED
+  session       Session? @relation(fields: [sessionId], references: [id])
+
+  rating        Int
+  comment       String?
+
+  userName      String?
+  astroName     String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([astrologerId])
 }

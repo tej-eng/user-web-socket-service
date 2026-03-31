@@ -310,6 +310,24 @@ socket.on("send_message", async (data) => {
     console.error("chat complete error", error);
   }
 });
+
+onSafe("customer_recharge", (data) => {
+        console.log("-------------customer_recharge-------------");
+        socket.to(data.room_id).emit("open_popup_astrologer", { roomId: data.room_id });
+        safePublish(pubClient, "customer_recharge", { roomId: data.room_id });
+      });
+
+      onSafe("customer_recharge_complted", (data) => {
+        console.log("-------------customer_recharge_complted-------------");
+        socket.to(data.room_id).emit("recharge_complted", { roomId: data.room_id, duetime: data.due_time });
+        safePublish(pubClient, "customer_recharge_complted", { roomId: data.room_id, duetime: data.due_time });
+      });
+
+      onSafe("customer_recharge_fail", (data) => {
+        console.log("-------------customer_recharge_fail-------------");
+        socket.to(data.room_id).emit("customer_recharge_fail", { roomId: data.room_id });
+        safePublish(pubClient, "customer_recharge_fail", { roomId: data.room_id });
+      });
       /* =========================
          Typing
       ========================= */

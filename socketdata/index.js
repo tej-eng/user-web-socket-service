@@ -317,10 +317,10 @@ onSafe("customer_recharge", (data) => {
         safePublish(pubClient, "customer_recharge", { roomId: data.room_id });
       });
 
-      onSafe("customer_recharge_complted", (data) => {
+      onSafe("customer_recharge_completed", (data) => {
         console.log("-------------customer_recharge_complted-------------");
-        socket.to(data.room_id).emit("recharge_complted", { roomId: data.room_id, duetime: data.due_time });
-        safePublish(pubClient, "customer_recharge_complted", { roomId: data.room_id, duetime: data.due_time });
+        socket.to(data.room_id).emit("customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
+        safePublish(pubClient, "customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
       });
 
       onSafe("customer_recharge_fail", (data) => {

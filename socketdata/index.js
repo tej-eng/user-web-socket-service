@@ -136,6 +136,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               
             setTimeout(async () => {
               try {
+                 let astroId = 156983;
+                 let queueKey = `chat_queue:${astroId}`;
                 const queueLength = await pubClient.lLen(queueKey);
                if(queueLength > 0){
                 await processNextChat(
@@ -195,11 +197,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       });
     }
 
-    //  Push into queue
-    //await pubClient.rPush(queueKey, roomId);
-
-    //  Calculate position (after push)
-    //const position = queueLength + 1;
 
     //  If user is NOT first → send queue position
     if (queueLength > 1) {
@@ -301,7 +298,9 @@ socket.on("send_message", async (data) => {
           roomId: roomId,
           status: "leave",
           }));
-        const queueLength = await pubClient.lLen(queueKey);
+          let astroId = 156983;
+         let queueKey = `chat_queue:${astroId}`;
+        let queueLength = await pubClient.lLen(queueKey);
         if(queueLength > 0){
         await processNextChat(
         "156983", //astrologer id for testing

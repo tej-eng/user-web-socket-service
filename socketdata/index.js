@@ -202,7 +202,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     if (queueLength > 1) {
       return socket.emit("queue_position", {
         message: `You are in queue`,
-        position: queueLength
+        position: queueLength,
+        waitTime: 120,
       });
     }
     console.log("User is first in queue, sending chat request to astrologer:", roomId);

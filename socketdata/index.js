@@ -200,6 +200,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
     //  If user is NOT first → send queue position
     if (queueLength > 1) {
+      console.log("User is in queue, sending position:", roomId, "Position:", queueLength);
       return socket.emit("queue_position", {
         message: `You are in queue`,
         position: queueLength,
@@ -309,7 +310,7 @@ socket.on("send_message", async (data) => {
         pubClient
         );
         }
-    
+     socket.disconnect(true);
 
   } catch (error) {
     console.error("chat complete error", error);

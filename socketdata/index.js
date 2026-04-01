@@ -136,11 +136,14 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               
             setTimeout(async () => {
               try {
+                const queueLength = await pubClient.lLen(queueKey);
+               if(queueLength > 0){
                 await processNextChat(
                   "156983",
                   redisClient,
                   pubClient
                 );
+              }
               } catch (err) {
                 console.error("Delayed processNextChat error:", err);
               }
@@ -298,20 +301,22 @@ socket.on("send_message", async (data) => {
           roomId: roomId,
           status: "leave",
           }));
-
-    // CALL NEXT CHAT
-    await processNextChat(
-      "156983", //astrologer id for testing
-      redisClient,
-      pubClient
-    );
+        const queueLength = await pubClient.lLen(queueKey);
+        if(queueLength > 0){
+        await processNextChat(
+        "156983", //astrologer id for testing
+        redisClient,
+        pubClient
+        );
+        }
+    
 
   } catch (error) {
     console.error("chat complete error", error);
   }
 });
 
-onSafe("customer_recharge", (data) => {
+     onSafe("customer_recharge", (data) => {
         console.log("-------------customer_recharge-------------");
         socket.to(data.room_id).emit("open_popup_astrologer", { roomId: data.room_id });
         safePublish(pubClient, "customer_recharge", { roomId: data.room_id });

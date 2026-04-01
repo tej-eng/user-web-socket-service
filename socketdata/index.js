@@ -185,7 +185,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
     // Get current queue length
     const queueLength = await pubClient.lLen(queueKey);
-
+    if (queueLength == 0) return;
     console.log("Queue Length:", queueLength);
 
     //  If queue full (LIMIT = 5)

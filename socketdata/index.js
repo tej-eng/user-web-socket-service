@@ -281,9 +281,7 @@ socket.on("send_message", async (data) => {
 
    socket.on("chatCompleted", async (data) => {
   try {
-    
    console.log("-------------chatCompleted-------------");
-
     const roomId = data.room_id;
    await finalizeChatSession(roomId, prisma, redisClient);
     console.log("Chat saved to DB & cleared from Redis:", roomId);
@@ -303,14 +301,16 @@ socket.on("send_message", async (data) => {
           let astroId = 156983;
          let queueKey = `chat_queue:${astroId}`;
         let queueLength = await pubClient.lLen(queueKey);
-        if(queueLength > 0){
+         if (queueLength > 0) {
+      setTimeout(async () => {
         await processNextChat(
-        "156983", //astrologer id for testing
-        redisClient,
-        pubClient
+          astroId,
+          redisClient,
+          pubClient
         );
-        }
-     socket.disconnect(true);
+      }, 3000); 
+    }
+     
 
   } catch (error) {
     console.error("chat complete error", error);

@@ -41,6 +41,11 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
     }),
     { EX: 3600 }
   );
+  multi.set(
+  `current_chat:156983`,//for testing
+  roomId,
+  { EX: 3600 }
+);
 
   multi.del(`chat_request_data:${roomId}`);
 
@@ -90,6 +95,11 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
        DELETE REDIS CHAT LIST
     ========================= */
     await redis.del(`chat_messages:${roomId}`);
+
+    const currentRoom = await redis.get(`current_chat:156983`);
+          if (currentRoom) {
+          await redis.del(`current_chat:156983`);
+          }
 
     /* =========================
        COMPLETE SESSION
@@ -220,6 +230,7 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
 
     multi.del(`chat_request_data:${roomId}`);
     //multi.del(`active_chat:${roomId}`);
+    
 
     await multi.exec();
 

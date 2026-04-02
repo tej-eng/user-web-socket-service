@@ -198,8 +198,9 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
 
     console.log("User is in queue, sending position1111111:", roomId, "Position:", queueLength);
+    const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
-    if (queueLength > 1) {
+    if (queueLength >= 1 && currentRoomId) {
       console.log("User is in queue, sending position:", roomId, "Position:", queueLength);
       return socket.emit("queue_position", {
         message: `You are in queue`,
@@ -299,6 +300,10 @@ socket.on("send_message", async (data) => {
           status: "leave",
           }));
           let astroId = 156983;
+          const currentRoom = await pubClient.get(`current_chat:${astroId}`);
+          if (currentRoom) {
+          await pubClient.del(`current_chat:${astroId}`);
+          }
          let queueKey = `chat_queue:${astroId}`;
         let queueLength = await pubClient.lLen(queueKey);
          if (queueLength > 0) {

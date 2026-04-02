@@ -197,7 +197,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       });
     }
 
-
+    console.log("User is in queue, sending position1111111:", roomId, "Position:", queueLength);
     //  If user is NOT first → send queue position
     if (queueLength > 1) {
       console.log("User is in queue, sending position:", roomId, "Position:", queueLength);

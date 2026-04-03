@@ -109,13 +109,49 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     if (activeChat) {
       const parsed = JSON.parse(activeChat);
 
-      await prisma.session.update({
-        where: { id: parsed.sessionId },
-        data: {
-          status: "COMPLETED",
-          endedAt: new Date()
-        }
-      });
+      const session = await prisma.session.findUnique({
+  where: { id: parsed.sessionId },
+});
+
+if (!session) {
+  throw new Error("Session not found");
+}
+
+//  Calculate duration (in seconds)
+const now = new Date();
+const startedAt = new Date(session.startedAt);
+
+const durationSec = Math.floor((now - startedAt) / 1000);
+
+//  Calculate coins deducted
+const ratePerMin = session.ratePerMin || 1;
+
+// convert seconds → minutes
+const durationMin = durationSec / 60;
+
+// you can use ceil OR floor based on business logic
+const coinsDeducted = Math.ceil(durationMin * ratePerMin);
+
+// Commission logic (example 30%)
+const commissionPercent = 30;
+const commission = Math.floor((coinsDeducted * commissionPercent) / 100);
+
+//  Coins earned by astrologer
+const coinsEarned = coinsDeducted - commission;
+
+//  Final update
+await prisma.session.update({
+  where: { id: parsed.sessionId },
+  data: {
+    status: "COMPLETED",
+    endedAt: now,
+    durationSec,
+    coinsDeducted,
+    coinsEarned,
+    commission,
+  },
+});
+
 
       await redis.del(`active_chat:${roomId}`);
     }

@@ -195,6 +195,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"
       });
+      
       return socket.emit("chat_rejected", {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"

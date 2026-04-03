@@ -107,6 +107,7 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     const activeChat = await redis.get(`active_chat:${roomId}`);
 
     if (activeChat) {
+      const parsed = JSON.parse(activeChat);
     const session = await prisma.session.findUnique({
   where: { id: parsed.sessionId },
 });

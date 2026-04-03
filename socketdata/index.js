@@ -191,13 +191,18 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     //  If queue full (LIMIT = 5)
     if (queueLength >= 5) {
       console.log("Queue full for astrologer:", astroId);
+       socket.emit("queue_full", {
+        message: "Astrologer is busy. Please try another astrologer.",
+        status: "FULL"
+      });
       return socket.emit("chat_rejected", {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"
       });
+
+      
     }
 
-    console.log("User is in queue, sending position1111111:", roomId, "Position:", queueLength);
     const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
     if (queueLength >= 1 && currentRoomId) {

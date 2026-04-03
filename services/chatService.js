@@ -107,39 +107,42 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     const activeChat = await redis.get(`active_chat:${roomId}`);
 
     if (activeChat) {
-      const parsed = JSON.parse(activeChat);
-
-      const session = await prisma.session.findUnique({
+    const session = await prisma.session.findUnique({
   where: { id: parsed.sessionId },
 });
 
-if (!session) {
-  throw new Error("Session not found");
-}
+if (!session) throw new Error("Session not found");
 
-//  Calculate duration (in seconds)
+// Prevent duplicate execution
+if (session.status === "COMPLETED") return;
+
+// Calculate actual duration
 const now = new Date();
 const startedAt = new Date(session.startedAt);
 
 const durationSec = Math.floor((now - startedAt) / 1000);
 
-//  Calculate coins deducted
+//  Billing logic
 const ratePerMin = session.ratePerMin || 1;
 
-// convert seconds → minutes
-const durationMin = durationSec / 60;
+let coinsDeducted = 0;
 
-// you can use ceil OR floor based on business logic
-const coinsDeducted = Math.ceil(durationMin * ratePerMin);
+if (durationSec <= 30) {
+  //  Minimum 1 minute charge
+  coinsDeducted = ratePerMin;
+} else {
+  // Normal billing
+  const durationMin = durationSec / 60;
+  coinsDeducted = Math.ceil(durationMin * ratePerMin);
+}
 
-// Commission logic (example 30%)
-const commissionPercent = 30;
-const commission = Math.floor((coinsDeducted * commissionPercent) / 100);
+//  Commission (fixed 50%)
+const commission = Math.floor(coinsDeducted * 0.5);
 
-//  Coins earned by astrologer
+//  Astrologer earning
 const coinsEarned = coinsDeducted - commission;
 
-//  Final update
+//  Update session
 await prisma.session.update({
   where: { id: parsed.sessionId },
   data: {

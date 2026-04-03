@@ -102,63 +102,136 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
           }
 
     /* =========================
-       COMPLETE SESSION
-    ========================= */
-    const activeChat = await redis.get(`active_chat:${roomId}`);
+   COMPLETE SESSION + WALLET SYNC (ATOMIC)
+========================= */
+const activeChat = await redis.get(`active_chat:${roomId}`);
 
-    if (activeChat) {
-      const parsed = JSON.parse(activeChat);
-    const session = await prisma.session.findUnique({
-  where: { id: parsed.sessionId },
+if (activeChat) {
+  const parsed = JSON.parse(activeChat);
+
+  const lockKey = `finalize_lock:${parsed.sessionId}`;
+  const isLocked = await redis.set(lockKey, "1", "NX", "EX", 30);
+
+  if (!isLocked) {
+    console.log("Duplicate finalize prevented:", parsed.sessionId);
+    return;
+  }
+
+  const existingTx = await prisma.walletTransaction.findFirst({
+  where: { sessionId: parsed.sessionId },
 });
 
-if (!session) throw new Error("Session not found");
+if (existingTx) return;
 
-// Prevent duplicate execution
-if (session.status === "COMPLETED") return;
+  await prisma.$transaction(async (tx) => {
+    const session = await tx.session.findUnique({
+      where: { id: parsed.sessionId },
+    });
 
-// Calculate actual duration
-const now = new Date();
-const startedAt = new Date(session.startedAt);
+    if (!session) throw new Error("Session not found");
 
-const durationSec = Math.floor((now - startedAt) / 1000);
+    // Prevent duplicate execution
+    if (session.status === "COMPLETED") return;
 
-//  Billing logic
-const ratePerMin = session.ratePerMin || 1;
+    // Duration
+    const now = new Date();
+    const startedAt = new Date(session.startedAt);
+    const durationSec = Math.floor((now - startedAt) / 1000);
 
-let coinsDeducted = 0;
+    const ratePerMin = session.ratePerMin || 1;
 
-if (durationSec <= 30) {
-  //  Minimum 1 minute charge
-  coinsDeducted = ratePerMin;
-} else {
-  // Normal billing
-  const durationMin = durationSec / 60;
-  coinsDeducted = Math.ceil(durationMin * ratePerMin);
-}
+    let coinsDeducted = 0;
 
-//  Commission (fixed 50%)
-const commission = Math.floor(coinsDeducted * 0.5);
-
-//  Astrologer earning
-const coinsEarned = coinsDeducted - commission;
-
-//  Update session
-await prisma.session.update({
-  where: { id: parsed.sessionId },
-  data: {
-    status: "COMPLETED",
-    endedAt: now,
-    durationSec,
-    coinsDeducted,
-    coinsEarned,
-    commission,
-  },
-});
-
-
-      await redis.del(`active_chat:${roomId}`);
+    if (durationSec <= 30) {
+      coinsDeducted = ratePerMin; // minimum 1 min
+    } else {
+      const durationMin = durationSec / 60;
+      coinsDeducted = Math.ceil(durationMin * ratePerMin);
     }
+
+    // Commission 50%
+    const commission = Math.floor(coinsDeducted * 0.5);
+    const coinsEarned = coinsDeducted - commission;
+
+    // Get wallets
+    const userWallet = await tx.userWallet.findUnique({
+      where: { userId: session.userId },
+    });
+
+    const astroWallet = await tx.astrologerWallet.findUnique({
+      where: { astrologerId: session.astrologerId },
+    });
+
+    if (!userWallet || !astroWallet) {
+      throw new Error("Wallet not found");
+    }
+
+    // Optional: balance check
+    if (userWallet.balanceCoins < coinsDeducted) {
+      throw new Error("Insufficient balance");
+    }
+
+    // USER DEBIT
+    await tx.userWallet.update({
+      where: { id: userWallet.id },
+      data: {
+        balanceCoins: {
+          decrement: coinsDeducted,
+        },
+      },
+    });
+
+    // ASTROLOGER CREDIT
+    await tx.astrologerWallet.update({
+      where: { id: astroWallet.id },
+      data: {
+        balanceCoins: {
+          increment: coinsEarned,
+        },
+        totalEarned: {
+          increment: coinsEarned,
+        },
+      },
+    });
+
+    // USER TRANSACTION (DEBIT)
+    await tx.walletTransaction.create({
+      data: {
+        userWalletId: userWallet.id,
+        sessionId: session.id,
+        type: "DEBIT",
+        coins: coinsDeducted,
+        description: "Chat session deduction",
+      },
+    });
+
+    // ASTROLOGER TRANSACTION (CREDIT) ✅ YOUR REQUIRED PART
+    await tx.walletTransaction.create({
+      data: {
+        astrologerWalletId: astroWallet.id,
+        sessionId: session.id,
+        type: "CREDIT",
+        coins: coinsEarned,
+        description: "Chat session earning",
+      },
+    });
+
+    // FINAL: update session
+    await tx.session.update({
+      where: { id: session.id },
+      data: {
+        status: "COMPLETED",
+        endedAt: now,
+        durationSec,
+        coinsDeducted,
+        coinsEarned,
+        commission,
+      },
+    });
+  });
+
+  await redis.del(`active_chat:${roomId}`);
+}
 
     console.log("Chat finalized successfully:", roomId);
 

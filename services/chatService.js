@@ -153,18 +153,26 @@ if (existingTx) return;
     const commission = Math.floor(coinsDeducted * 0.5);
     const coinsEarned = coinsDeducted - commission;
 
-    // Get wallets
-    const userWallet = await tx.userWallet.findUnique({
-      where: { userId: session.userId },
-    });
+    // USER WALLET (must exist)
+const userWallet = await tx.userWallet.findUnique({
+  where: { userId: session.userId },
+});
 
-    const astroWallet = await tx.astrologerWallet.findUnique({
-      where: { astrologerId: session.astrologerId },
-    });
+if (!userWallet) {
+  throw new Error("User wallet not found");
+}
 
-    if (!userWallet || !astroWallet) {
-      throw new Error("Wallet not found");
-    }
+// ASTRO WALLET (AUTO CREATE if not exists)
+const astroWallet = await tx.astrologerWallet.upsert({
+  where: { astrologerId: session.astrologerId },
+  update: {}, // nothing to update
+  create: {
+    astrologerId: session.astrologerId,
+    balanceCoins: 0,
+    totalEarned: 0,
+    totalWithdrawn: 0,
+  },
+});
 
     // Optional: balance check
     if (userWallet.balanceCoins < coinsDeducted) {

@@ -98,12 +98,15 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
 const activeChat = await redis.get(`active_chat:${roomId}`);
-let  lockKey="";
+let lockKey = null;
+let lockValue = null;
 if (activeChat) {
   const parsed = JSON.parse(activeChat);
 
-   lockKey = `finalize_lock:${parsed.sessionId}`;
-  const isLocked = await redis.set(lockKey, "1", "NX", "EX", 30);
+  lockKey = `finalize_lock:${parsed.sessionId}`;
+  lockValue = `${Date.now()}_${Math.random()}`;
+
+const isLocked = await redis.set(lockKey, lockValue, "NX", "EX", 30);
 
   if (!isLocked) {
     return;
@@ -241,9 +244,17 @@ const astroWallet = await tx.astrologerWallet.upsert({
     throw error;
   }
   finally {
-  const currentValue = await redis.get(lockKey);
-  if (currentValue === lockValue) {
-    await redis.del(lockKey);
+  try {
+    if (lockKey && lockValue) {
+      const currentValue = await redis.get(lockKey);
+
+      // Only delete if THIS process owns the lock
+      if (currentValue === lockValue) {
+        await redis.del(lockKey);
+      }
+    }
+  } catch (err) {
+    console.error("Lock cleanup error:", err);
   }
 }
 };

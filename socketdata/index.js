@@ -321,6 +321,43 @@ socket.on("send_message", async (data) => {
   }
 });
 
+      onSafe("cancel_chat_request", async (data) => {
+       await handleRejectChat(data.room_id, prisma, redisClient);
+                io.emit("chat_rejected", data);
+        safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
+      });
+
+      onSafe("queue_cancel", async (data) => {
+       await handleRejectChat(data.room_id, prisma, redisClient);
+                io.emit("chat_rejected", data);
+        safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
+      });
+
+      onSafe("autodisconnect", async (data) => {
+      const roomId = String(data.room_id);
+      const astroId = String(data.astroid);
+
+      try {
+        if (roomId) {
+          socket.broadcast.emit("chat_reject_auto", {
+            message: `${roomId} has been automatically rejected after 1 minute.`,
+            roomId: roomId,
+            status: "reject",
+          });
+          socket.leave(roomId);
+            safePublish(pubClient, "chat_reject_auto", {
+            message: `${roomId} has been automatically rejected after 1 minute.`,
+            roomId: roomId,
+            status: "reject",
+          });
+        } else {
+          console.log("Chat accepted or not enough time has passed.");
+        }
+      } catch (error) {
+        console.error("Auto-disconnect error:", error);
+      }
+    });
+
      onSafe("customer_recharge", (data) => {
         socket.to(data.room_id).emit("open_popup_astrologer", { roomId: data.room_id });
         safePublish(pubClient, "customer_recharge", { roomId: data.room_id });
@@ -352,6 +389,7 @@ socket.on("send_message", async (data) => {
           roomid: data.room_id,
         });
       });
+
     });
   } catch (err) {
     logEvent("socketHandlerCritical", err.stack, true);

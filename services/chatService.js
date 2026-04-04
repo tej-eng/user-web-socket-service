@@ -53,6 +53,8 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
   return session;
 };
 export const finalizeChatSession = async (roomId, prisma, redis) => {
+  let lockKey = null;
+  let lockValue = null;
   try {
     /* =========================
         GET ALL MESSAGES FROM REDIS
@@ -98,8 +100,7 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
 const activeChat = await redis.get(`active_chat:${roomId}`);
-let lockKey = null;
-let lockValue = null;
+
 if (activeChat) {
   const parsed = JSON.parse(activeChat);
 

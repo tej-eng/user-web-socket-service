@@ -240,6 +240,12 @@ const astroWallet = await tx.astrologerWallet.upsert({
     console.error("finalizeChatSession error:", error);
     throw error;
   }
+  finally {
+  const currentValue = await redis.get(lockKey);
+  if (currentValue === lockValue) {
+    await redis.del(lockKey);
+  }
+}
 };
 
 // services/chatService.js

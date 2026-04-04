@@ -319,11 +319,14 @@ export const processNextChat = async (
     const queue = await redis.lRange(queueKey, 0, -1);
 
     queue.forEach((roomId, index) => {
+      
       pubClient.publish(
         "queue_update",
         JSON.stringify({
           roomId,
-          position: index + 1
+          position: index + 1,
+          waitTime:120,
+          message:`Now Your position is changed in queue ${index + 1}`
         })
       );
     });

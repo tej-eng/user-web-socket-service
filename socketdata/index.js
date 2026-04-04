@@ -86,6 +86,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       "astrologer_typing",
       "end_chat_by_astrologer",
       "astrologer_disconnected",
+      "queue_update",
     ];
 
     for (const channel of channels) {
@@ -128,6 +129,9 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
             case "astrologer_typing":
               io.to(data.roomid).emit("typing", data);
+              break;
+            case "queue_update":
+              io.to(data.roomId).emit("queue_update", data);
               break;
 
             case "end_chat_by_astrologer":

@@ -186,11 +186,9 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     // Get current queue length
     const queueLength = await pubClient.lLen(queueKey);
     if (queueLength == 0) return;
-    console.log("Queue Length:", queueLength);
 
     //  If queue full (LIMIT = 5)
     if (queueLength >= 5) {
-      console.log("Queue full for astrologer:", astroId);
        socket.emit("queue_full", {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"
@@ -207,14 +205,12 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
     if (queueLength >= 1 && currentRoomId) {
-      console.log("User is in queue, sending position:", roomId, "Position:", queueLength);
       return socket.emit("queue_position", {
         message: `You are in queue`,
         position: queueLength,
         waitTime: 120,
       });
     }
-    console.log("User is first in queue, sending chat request to astrologer:", roomId);
     // If first user → send request to astrologer
     safePublish(pubClient, "chat_requests", {
       message: "Chat request sent successfully",
@@ -288,11 +284,8 @@ socket.on("send_message", async (data) => {
 
    socket.on("chatCompleted", async (data) => {
   try {
-   console.log("-------------chatCompleted-------------");
     const roomId = data.room_id;
    await finalizeChatSession(roomId, prisma, redisClient);
-    console.log("Chat saved to DB & cleared from Redis:", roomId);
-
         socket.emit("chatCompleted", {
           message: `You have left the ${roomId} chat.`,
           roomId: roomId,
@@ -329,19 +322,16 @@ socket.on("send_message", async (data) => {
 });
 
      onSafe("customer_recharge", (data) => {
-        console.log("-------------customer_recharge-------------");
         socket.to(data.room_id).emit("open_popup_astrologer", { roomId: data.room_id });
         safePublish(pubClient, "customer_recharge", { roomId: data.room_id });
       });
 
       onSafe("customer_recharge_completed", (data) => {
-        console.log("-------------customer_recharge_complted-------------");
         socket.to(data.room_id).emit("customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
         safePublish(pubClient, "customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
       });
 
       onSafe("customer_recharge_fail", (data) => {
-        console.log("-------------customer_recharge_fail-------------");
         socket.to(data.room_id).emit("customer_recharge_fail", { roomId: data.room_id });
         safePublish(pubClient, "customer_recharge_fail", { roomId: data.room_id });
       });

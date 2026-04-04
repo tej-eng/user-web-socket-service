@@ -43,7 +43,7 @@ const io = new Server(server, {
    REDIS CONFIG
 ============================== */
 
-// 🔹 1. Pub/Sub (Socket.IO Adapter)
+// Pub/Sub (Socket.IO Adapter)
 const pubClient = createClient({
   username: process.env.REDIS_USERNAME,
   password: process.env.REDIS_PASSWORD,
@@ -55,7 +55,7 @@ const pubClient = createClient({
 
 const subClient = pubClient.duplicate();
 
-// 🔹 2. MAIN Redis Client (for queue, active chat, etc.)
+//  MAIN Redis Client 
 const redisClient = createClient({
   username: process.env.REDIS_USERNAME,
   password: process.env.REDIS_PASSWORD,
@@ -69,13 +69,8 @@ const redisClient = createClient({
 await pubClient.connect();
 await subClient.connect();
 await redisClient.connect();
-
 console.log(" Redis Pub/Sub Connected");
-console.log(" Redis Main Client Connected");
-
-// Attach adapter
 io.adapter(createAdapter(pubClient, subClient));
-
 /* ==============================
    JWT AUTH MIDDLEWARE
 ============================== */

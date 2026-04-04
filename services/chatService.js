@@ -1,5 +1,4 @@
 export const handleAcceptChat = async (roomId, prisma, redis) => {
-  console.log("Handling chat acceptance for room:", roomId);
 
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId }
@@ -24,7 +23,6 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
     }
   });
 
-  console.log("Session created:", session.id);
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
@@ -51,14 +49,11 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   await multi.exec();
 
-  console.log("Chat moved to active:", roomId);
 
   return session;
 };
 export const finalizeChatSession = async (roomId, prisma, redis) => {
   try {
-    console.log("Finalizing chat for room:", roomId);
-
     /* =========================
         GET ALL MESSAGES FROM REDIS
     ========================= */
@@ -69,8 +64,6 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     );
 
     const parsedMessages = messages.map(m => JSON.parse(m));
-
-    console.log("Messages to store:", parsedMessages.length);
 
     /* =========================
        SAVE TO DB (BULK)
@@ -113,7 +106,6 @@ if (activeChat) {
   const isLocked = await redis.set(lockKey, "1", "NX", "EX", 30);
 
   if (!isLocked) {
-    console.log("Duplicate finalize prevented:", parsed.sessionId);
     return;
   }
 
@@ -241,7 +233,6 @@ const astroWallet = await tx.astrologerWallet.upsert({
   await redis.del(`active_chat:${roomId}`);
 }
 
-    console.log("Chat finalized successfully:", roomId);
 
     return true;
 
@@ -264,17 +255,11 @@ export const processNextChat = async (
     const nextRoomId = await redis.lIndex(queueKey, 0);
 
     if (!nextRoomId) {
-      console.log("No users in queue for astrologer:", astrologerId);
       return null;
     }
-
-    console.log("Next roomId from queue:", nextRoomId);
-
     // PREVENT DUPLICATE / ALREADY ACTIVE CHAT
     const isActive = await redis.exists(`active_chat:${nextRoomId}`);
     if (isActive) {
-      console.log("Room already active, skipping:", nextRoomId);
-
       // OPTIONAL: remove it from queue (cleanup)
       await redis.lRem(queueKey, 1, nextRoomId);
 
@@ -288,7 +273,6 @@ export const processNextChat = async (
     }
 
     const parsed = JSON.parse(data);
-    console.log("Parsed chat request data:", parsed);
     // Send request to astrologer
    const result = await pubClient.publish(
       "chat_requests",
@@ -311,7 +295,6 @@ export const processNextChat = async (
       })
     );
     if(result){
-      console.log("Chat request published to astrologer:", nextRoomId);
     }
 
     // Update queue positions (optional but useful)
@@ -336,8 +319,6 @@ export const processNextChat = async (
 };
 export const handleRejectChat = async (roomId, prisma, redis) => {
   try {
-    console.log("Handling chat rejection for room:", roomId);
-
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId }
     });
@@ -351,12 +332,7 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
 
     multi.del(`chat_request_data:${roomId}`);
     //multi.del(`active_chat:${roomId}`);
-    
-
     await multi.exec();
-
-    console.log("Rejected chat cleaned:", roomId);
-
     return intake ? intake.astrologerId : null;
 
   } catch (error) {

@@ -98,11 +98,11 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
 const activeChat = await redis.get(`active_chat:${roomId}`);
-
+let  lockKey="";
 if (activeChat) {
   const parsed = JSON.parse(activeChat);
 
-  const lockKey = `finalize_lock:${parsed.sessionId}`;
+   lockKey = `finalize_lock:${parsed.sessionId}`;
   const isLocked = await redis.set(lockKey, "1", "NX", "EX", 30);
 
   if (!isLocked) {

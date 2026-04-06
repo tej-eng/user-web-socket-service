@@ -131,6 +131,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":
+              console.log("Queue update received for room:", data.roomId, "Position:", data.position);
               io.to(data.roomId).emit("queue_update", data);
               break;
 

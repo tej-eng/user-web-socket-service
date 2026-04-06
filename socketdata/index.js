@@ -339,7 +339,7 @@ socket.on("send_message", async (data) => {
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
-      onSafe("autodisconnect", async (data) => {
+      onSafe("autoDisconnect", async (data) => {
         console.log("Auto-disconnect event received for room:", data.room_id);
       const roomId = String(data.room_id);
       const astroId = String(data.astroid);

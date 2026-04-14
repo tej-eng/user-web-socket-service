@@ -270,6 +270,7 @@ export const processNextChat = async (
 
     //  Get next roomId
     const nextRoomId = await redis.lIndex(queueKey, 0);
+    console.log("Next Room ID from queue:", nextRoomId);
 
     if (!nextRoomId) {
       return null;
@@ -285,6 +286,7 @@ export const processNextChat = async (
     }
  
    const data = await redis.get(`chat_request_data:${nextRoomId}`);
+   console.log("Chat request data for room:", nextRoomId, data);
    if (data) {
    await redis.del(`chat_request_data:${nextRoomId}`);
   }

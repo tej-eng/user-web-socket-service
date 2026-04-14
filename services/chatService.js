@@ -292,6 +292,9 @@ export const processNextChat = async (
    console.log("Chat request data for room:", nextRoomId, data);
    if (data) {
    await redis.del(`chat_request_data:${nextRoomId}`);
+  }else{
+    console.warn(`No chat request data found for room ${nextRoomId}`);
+    return await processNextChat(astrologerId, redis, pubClient);
   }
 
 const parsed = JSON.parse(data);

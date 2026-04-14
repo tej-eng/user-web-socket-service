@@ -284,17 +284,12 @@ export const processNextChat = async (
       return await processNextChat(astrologerId, redis, pubClient);
     }
  
-    const data = await redis.get(`chat_request_data:${nextRoomId}`);
-    console.log("Processing next chat:", { nextRoomId, data });
+   const data = await redis.get(`chat_request_data:${nextRoomId}`);
+   if (data) {
+   await redis.del(`chat_request_data:${nextRoomId}`);
+  }
 
-if (!data) {
-  // remove broken entry from queue
-  //await redis.lRem(queueKey, 1, nextRoomId);
-  // try next user
-  return await processNextChat(astrologerId, redis, pubClient);
-}
 const parsed = JSON.parse(data);
-await redis.del(`chat_request_data:${nextRoomId}`);
     // Send request to astrologer
    const result = await pubClient.publish(
       "chat_requests",

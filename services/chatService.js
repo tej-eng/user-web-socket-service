@@ -268,12 +268,13 @@ export const processNextChat = async (
   try {
     const queueKey = `chat_queue:${astrologerId}`;
       const queueItem = await redis.lIndex(queueKey, 0);
+      console.log("Next queue item for astrologer", astrologerId, queueItem);
       if (!queueItem) return null;
       const parsedQueue = JSON.parse(queueItem);
       const nextRoomId = parsedQueue.roomId;
       const maximumTime = parsedQueue.maximum_time;
       const userId = parsedQueue.user_id;
-
+     console.log("Parsed queue item:", nextRoomId);
     if (!nextRoomId) {
       return null;
     }

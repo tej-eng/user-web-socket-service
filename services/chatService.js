@@ -26,8 +26,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
- multi.lRem(`chat_queue:156983`, 1, roomId);  //used for testing
-  //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
+  multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
 
   multi.set(
     `active_chat:${roomId}`,
@@ -40,7 +39,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
     { EX: 3600 }
   );
   multi.set(
-  `current_chat:156983`,//for testing
+  `current_chat:${intake.astrologerId}`,//for testing
   roomId,
   { EX: 3600 }
 );
@@ -304,7 +303,7 @@ export const processNextChat = async (
         placeOfBirth: "2026-03-19" ,
         occupation: parsed.occupation,
         location: parsed.location,
-        astro_id:156983,
+        astro_id:parsed.astro_id,
         user_id: parsed.user_id,
         is_promotional: parsed.is_promotional || true,
         maximum_time: parsed.maximum_time || 0,
@@ -347,8 +346,7 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
     const multi = redis.multi();
 
     if (intake) {
-      //multi.lRem(`chat_queue:${intake.astrologerId}`, 0, roomId); //for production
-      multi.lRem(`chat_queue:156983`, 0, roomId);     //for testing
+      multi.lRem(`chat_queue:${intake.astrologerId}`, 0, roomId); //for production
     }
 
     multi.del(`chat_request_data:${roomId}`);

@@ -17,7 +17,7 @@ dotenv.config();
 const FRONTEND_URL = "https://dhwaniastro.com";
 
 const app = express();
-const port = process.env.PORT || 8009;
+const port = process.env.PORT ;
 const server = createServer(app);
 
 /* ==============================

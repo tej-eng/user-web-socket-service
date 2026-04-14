@@ -184,7 +184,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
   onSafe("chat_request", async (data) => {
   try {
-    const astroId = 156983;
+    const astroId = data.astro_id;
     const queueKey = `chat_queue:${astroId}`;
     const roomId = data.room_id;
 
@@ -303,8 +303,8 @@ socket.on("send_message", async (data) => {
           roomId: roomId,
           status: "leave",
           }));
-          let astroId = 156983;
-          const currentRoom = await pubClient.get(`current_chat:${astroId}`);
+          let astroId = data.astroId;
+          const currentRoom = await pubClient.get(`current_chat:${data.astroId}`);
           if (currentRoom) {
           await pubClient.del(`current_chat:${astroId}`);
           }
@@ -327,21 +327,18 @@ socket.on("send_message", async (data) => {
 });
 
       onSafe("cancel_chat_request", async (data) => {
-        console.log("Cancel chat request received for room:", data.room_id);
        await handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("queue_cancel", async (data) => {
-        console.log("Queue cancel received for room:", data.room_id);
        await handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("autoDisconnect", async (data) => {
-        console.log("Auto-disconnect event received for room:", data.room_id);
       const roomId = String(data.room_id);
       const astroId = String(data.astroid);
       await handleRejectChat(roomId, prisma, redisClient);

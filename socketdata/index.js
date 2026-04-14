@@ -137,16 +137,15 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
             case "end_chat_by_astrologer":
               io.to(data.roomId).emit("leave_chat", data);
-              await finalizeChatSession(data.roomId, prisma, redisClient);
+              await finalizeChatSession(data.roomId, prisma, redisClient,data.astroId);
               
             setTimeout(async () => {
               try {
-                 let astroId = 156983;
-                 let queueKey = `chat_queue:${astroId}`;
+                 let queueKey = `chat_queue:${data.astroId}`;
                 const queueLength = await pubClient.lLen(queueKey);
                if(queueLength > 0){
                 await processNextChat(
-                  "156983",
+                  data.astroId,
                   redisClient,
                   pubClient
                 );
@@ -290,7 +289,7 @@ socket.on("send_message", async (data) => {
    socket.on("chatCompleted", async (data) => {
   try {
     const roomId = data.room_id;
-   await finalizeChatSession(roomId, prisma, redisClient);
+   await finalizeChatSession(roomId, prisma, redisClient,data.astroId);
         socket.emit("chatCompleted", {
           message: `You have left the ${roomId} chat.`,
           roomId: roomId,

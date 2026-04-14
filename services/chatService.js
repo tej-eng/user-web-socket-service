@@ -51,7 +51,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   return session;
 };
-export const finalizeChatSession = async (roomId, prisma, redis) => {
+export const finalizeChatSession = async (roomId, prisma, redis,astroId) => {
   let lockKey = null;
   let lockValue = null;
   try {
@@ -90,9 +90,9 @@ export const finalizeChatSession = async (roomId, prisma, redis) => {
     ========================= */
     await redis.del(`chat_messages:${roomId}`);
 
-    const currentRoom = await redis.get(`current_chat:156983`);
+    const currentRoom = await redis.get(`current_chat:${astroId}`);
           if (currentRoom) {
-          await redis.del(`current_chat:156983`);
+          await redis.del(`current_chat:${astroId}`);
           }
 
     /* =========================

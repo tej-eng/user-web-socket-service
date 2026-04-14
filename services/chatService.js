@@ -285,6 +285,7 @@ export const processNextChat = async (
     }
  
     const data = await redis.get(`chat_request_data:${nextRoomId}`);
+    console.log("Processing next chat:", { nextRoomId, data });
 
 if (!data) {
   // remove broken entry from queue

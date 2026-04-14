@@ -208,11 +208,20 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
     const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
+    const queueList = await pubClient.lRange(queueKey, 0, -1);
+    let waitTime = 0;
+    // Sum max time of all users before current user
+  for (let i = 0; i < queueList.length; i++) {
+  const user = JSON.parse(queueList[i]);
+  // stop when current user reached
+  if (user.room_id === roomId) break;
+  waitTime += user.maximum_time;
+}
     if (queueLength >= 1 && currentRoomId) {
       return socket.emit("queue_position", {
         message: `You are in queue`,
         position: queueLength,
-        waitTime: 120,
+        waitTime:waitTime * 60,
       });
     }
     // If first user → send request to astrologer

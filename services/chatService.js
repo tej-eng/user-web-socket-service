@@ -288,7 +288,7 @@ export const processNextChat = async (
 
 if (!data) {
   // remove broken entry from queue
-  await redis.lRem(queueKey, 1, nextRoomId);
+  //await redis.lRem(queueKey, 1, nextRoomId);
   // try next user
   return await processNextChat(astrologerId, redis, pubClient);
 }

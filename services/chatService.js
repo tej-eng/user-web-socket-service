@@ -94,6 +94,24 @@ export const finalizeChatSession = async (roomId, prisma, redis,astroId) => {
           if (currentRoom) {
           await redis.del(`current_chat:${astroId}`);
           }
+//------------------------REMOVE FROM QUEUE IF STILL PRESENT (EDGE CASE)----------------------
+const queueKey = `chat_queue:${astroId}`;
+const queueList = await redis.lRange(queueKey, 0, -1);
+
+let itemToRemove = null;
+
+for (const item of queueList) {
+  const parsed = JSON.parse(item);
+
+  if (parsed.roomId === roomId) {
+    itemToRemove = item;
+    break;
+  }
+}
+
+if (itemToRemove) {
+  await redis.lRem(queueKey, 1, itemToRemove);
+}
 
     /* =========================
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
@@ -281,9 +299,23 @@ export const processNextChat = async (
     // PREVENT DUPLICATE / ALREADY ACTIVE CHAT
     const isActive = await redis.exists(`active_chat:${nextRoomId}`);
     if (isActive) {
-      // OPTIONAL: remove it from queue (cleanup)
-     const re= await redis.lRem(queueKey, 1, nextRoomId);
-     console.warn(`Room ${nextRoomId} is already active. Removed from queue:`, re);
+            // OPTIONAL: remove it from queue (cleanup)
+            const queueList = await redis.lRange(queueKey, 0, -1);
+
+            let itemToRemove = null;
+
+            for (const item of queueList) {
+            const parsed = JSON.parse(item);
+
+            if (parsed.roomId === roomId) {
+            itemToRemove = item;
+            break;
+            }
+            }
+
+            if (itemToRemove) {
+            await redis.lRem(queueKey, 1, itemToRemove);
+            }
 
       // Try next user recursively
       return await processNextChat(astrologerId, redis, pubClient);

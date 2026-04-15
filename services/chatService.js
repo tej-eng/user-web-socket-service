@@ -282,7 +282,8 @@ export const processNextChat = async (
     const isActive = await redis.exists(`active_chat:${nextRoomId}`);
     if (isActive) {
       // OPTIONAL: remove it from queue (cleanup)
-      await redis.lRem(queueKey, 1, nextRoomId);
+     const re= await redis.lRem(queueKey, 1, nextRoomId);
+     console.warn(`Room ${nextRoomId} is already active. Removed from queue:`, re);
 
       // Try next user recursively
       return await processNextChat(astrologerId, redis, pubClient);

@@ -186,7 +186,10 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     const astroId = data.astro_id;
     const queueKey = `chat_queue:${astroId}`;
     const roomId = data.room_id;
+    socket.join(String(roomId));
+    socket.roomId = String(roomId);
 
+    console.log("+++++++++++ User joined room at chat_request:", roomId);
     // Get current queue length
     const queueLength = await pubClient.lLen(queueKey);
     if (queueLength == 0) return;

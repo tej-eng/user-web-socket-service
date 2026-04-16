@@ -214,7 +214,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
   for (let i = 0; i < queueList.length; i++) {
   const user = JSON.parse(queueList[i]);
   // stop when current user reached
-  console.log("roomid--------------------",user.roomId);
   if (user.roomId === roomId) break;
   waitTime += user.maximum_time;
 }

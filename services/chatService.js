@@ -89,7 +89,7 @@ export const finalizeChatSession = async (roomId, prisma, redis,astroId) => {
        DELETE REDIS CHAT LIST
     ========================= */
     await redis.del(`chat_messages:${roomId}`);
-
+   // await redis.sRem(`user_in_queue:${astroId}`, userId);
     const currentRoom = await redis.get(`current_chat:${astroId}`);
           if (currentRoom) {
           await redis.del(`current_chat:${astroId}`);
@@ -386,9 +386,10 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
     });
 
     const multi = redis.multi();
-
+    console.log("Rejecting chat for room:WWWWWWWWWWWWWWWWWWWWW",intake.userId);
     if (intake) {
       multi.lRem(`chat_queue:${intake.astrologerId}`, 0, roomId); //for production
+      await redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
     }
 
     multi.del(`chat_request_data:${roomId}`);

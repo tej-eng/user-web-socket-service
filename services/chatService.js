@@ -360,11 +360,12 @@ const parsed = JSON.parse(data);
     const queue = await redis.lRange(queueKey, 0, -1);
 
     queue.forEach((userData, index) => {
-      console.log(`Updating position for room ----------------------------${userData.roomId} to ${index + 1}`);
+      console.log("Updating queue position for user:", userData);
+      console.log(`Updating position for room ----------------------------${JSON.parse(userData).roomId} to ${index + 1}`);
       pubClient.publish(
         "queue_update",
         JSON.stringify({
-          roomId: userData.roomId,
+          roomId: JSON.parse(userData).roomId,
           position: index + 1,
           waitTime:120,
           message:`Now Your position is changed in queue ${index + 1}`

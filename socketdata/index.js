@@ -213,16 +213,14 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     // Sum max time of all users before current user
   for (let i = 0; i < queueList.length; i++) {
   const user = JSON.parse(queueList[i]);
-  console.log(`Queue user room id: ${user.roomId}`);
   // stop when current user reached
-  console.log(`Checking queue user room_id for current user ${user.room_id} against current user ${roomId}`);
-  if (user.roomId === roomId) break;
+  if (user.room_id === roomId) break;
   waitTime += user.maximum_time;
 }
     if (queueLength >= 1 && currentRoomId) {
       return socket.emit("queue_position", {
         message: `You are in queue`,
-        position: queueLength-1,
+        position: queueLength,
         waitTime:waitTime * 60,
       });
     }

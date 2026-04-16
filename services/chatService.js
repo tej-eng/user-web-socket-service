@@ -27,7 +27,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
   multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
-
+  multi.redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
     `active_chat:${roomId}`,
     JSON.stringify({
@@ -170,7 +170,7 @@ if (existingTx) return;
 const userWallet = await tx.userWallet.findUnique({
   where: { userId: session.userId },
 });
-
+ await redis.sRem(`user_in_queue:${astroId}`, session.userId);
 if (!userWallet) {
   throw new Error("User wallet not found");
 }

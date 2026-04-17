@@ -399,7 +399,7 @@ const parsed = JSON.parse(data);
     return null;
   }
 };
-export const handleRejectChat = async (roomId, prisma, redis) => {
+export const handleRejectChat = async (roomId, prisma, redis,pubClient) => {
   try {
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId }

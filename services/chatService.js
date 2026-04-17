@@ -28,6 +28,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
   const multi = redis.multi();
     const queueKey = `chat_queue:${intake.astrologerId}`;
     const queueList = await redis.lRange(queueKey, 0, -1);
+    console.log("Current queue list for astrologerqqqqqqqqqqqqqqqqqqqqqqqqq", intake.astrologerId, queueList);
 
     const itemToRemove = queueList.find(item => {
     try {
@@ -38,6 +39,7 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
     });
 
     if (itemToRemove) {
+      console.log("Removing item from queuevvvvvvvvvvvvvvvvv:", itemToRemove);
     multi.lRem(queueKey, 1, itemToRemove);
     }
   //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production

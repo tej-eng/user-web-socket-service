@@ -192,10 +192,11 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     console.log("+++++++++++ User joined room at chat_request:", roomId);
     // Get current queue length
     const queueLength = await pubClient.lLen(queueKey);
+    console.log("Current queue length for astrologeraaaaaaaaaaaaaaaaaaaaa", astroId, "is", queueLength);
     if (queueLength == 0) return;
 
     
-
+    console.log("111111111111111111111111111111111111111");
     const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
     const queueList = await pubClient.lRange(queueKey, 0, -1);
@@ -207,7 +208,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
   if (user.roomId === roomId) break;
   waitTime += user.maximum_time;
 }
-console.log("queueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", queueLength);
+ console.log("222222222222222222222222222222");
     if (queueLength >= 1) {
       console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
       return socket.emit("queue_position", {
@@ -216,7 +217,7 @@ console.log("queueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", queueLength);
         waitTime:waitTime * 60,
       });
     }
-
+ console.log("33333333333333333333333");
     //  If queue full (LIMIT = 5)
     if (queueLength >= 5) {
        socket.emit("queue_full", {
@@ -231,7 +232,7 @@ console.log("queueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", queueLength);
 
       
     }
-
+ console.log("44444444444444444444444");
     // If first user → send request to astrologer
     safePublish(pubClient, "chat_requests", {
       message: "Chat request sent successfully",

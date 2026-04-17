@@ -26,7 +26,21 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
+    const queueKey = `chat_queue:${intake.astrologerId}`;
+    const queueList = await redis.lRange(queueKey, 0, -1);
+
+    const itemToRemove = queueList.find(item => {
+    try {
+    return JSON.parse(item).roomId === roomId;
+    } catch {
+    return false;
+    }
+    });
+
+    if (itemToRemove) {
+    multi.lRem(queueKey, 1, itemToRemove);
+    }
+  //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
   multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
     `active_chat:${roomId}`,

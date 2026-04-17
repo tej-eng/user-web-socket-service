@@ -211,7 +211,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
  console.log("222222222222222222222222222222");
     if (queueLength >= 1) {
       console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
-      return socket.emit("queue_position", {
+        socket.emit("queue_position", {
         message: `You are in queue`,
         position: queueLength-1,
         waitTime:waitTime * 60,
@@ -219,7 +219,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
  console.log("33333333333333333333333");
     //  If queue full (LIMIT = 5)
-    if (queueLength >= 5) {
+    if (queueLength > 5) {
        socket.emit("queue_full", {
         message: "Astrologer is busy. Please try another astrologer.",
         status: "FULL"

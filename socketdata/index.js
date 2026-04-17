@@ -207,6 +207,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
   if (user.roomId === roomId) break;
   waitTime += user.maximum_time;
 }
+console.log("queueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", queueLength);
     if (queueLength >= 1) {
       console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
       return socket.emit("queue_position", {

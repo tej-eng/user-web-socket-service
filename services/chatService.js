@@ -374,7 +374,7 @@ const parsed = JSON.parse(data);
     }
 
     // Update queue positions (optional but useful)
-    const queueKey = await redis.lRange(queueKey, 0, -1);
+    //const queueKey = await redis.lRange(queueKey, 0, -1);
     //-------------------------------------------------------
     await updateQueuePositions(queueKey, redis, pubClient);
     //-------------------------------------------------------

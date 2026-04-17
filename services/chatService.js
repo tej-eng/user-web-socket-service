@@ -385,17 +385,39 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
       where: { chatId: roomId }
     });
 
-    const multi = redis.multi();
-    console.log("Rejecting chat for room:WWWWWWWWWWWWWWWWWWWWW",intake.userId);
-    if (intake) {
-      multi.lRem(`chat_queue:${intake.astrologerId}`, 0, roomId); //for production
-      await redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+    if (!intake) return null;
+
+    const queueKey = `chat_queue:${intake.astrologerId}`;
+
+    // get full queue
+    const queueList = await redis.lRange(queueKey, 0, -1);
+
+    let matchedItem = null;
+
+    //  find correct JSON string
+    for (const item of queueList) {
+      const parsed = JSON.parse(item);
+      if (parsed.roomId === roomId) {
+        matchedItem = item;
+        break;
+      }
     }
 
+    const multi = redis.multi();
+
+    // remove exact match
+    if (matchedItem) {
+      multi.lRem(queueKey, 0, matchedItem);
+    }
+
+    // remove user from set
+    await redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+
     multi.del(`chat_request_data:${roomId}`);
-    //multi.del(`active_chat:${roomId}`);
+
     await multi.exec();
-    return intake ? intake.astrologerId : null;
+
+    return intake.astrologerId;
 
   } catch (error) {
     console.error("handleRejectChat error:", error);

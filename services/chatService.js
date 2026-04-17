@@ -1,4 +1,4 @@
-export const handleAcceptChat = async (roomId, prisma, redis) => {
+export const handleAcceptChat = async (roomId, prisma, redis,pubClient) => {
 
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId }

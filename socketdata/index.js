@@ -102,7 +102,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
                   const result = await handleAcceptChat(
                   data.roomid,
                   prisma,
-                  redisClient 
+                  redisClient ,
+                  pubClient
                  );
                  if(result){
                 io.emit("chatAcceptedByAstrologer", data);
@@ -131,7 +132,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":
-              console.log("Queue update received for room=========================================:", data.roomId, "Position:", data.position);
               io.to(data.roomId).emit("queue_position", data);
               break;
 
@@ -189,14 +189,11 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     socket.join(String(roomId));
     socket.roomId = String(roomId);
 
-    console.log("+++++++++++ User joined room at chat_request:", roomId);
     // Get current queue length
     const queueLength = await pubClient.lLen(queueKey);
-    console.log("Current queue length for astrologeraaaaaaaaaaaaaaaaaaaaa", astroId, "is", queueLength);
     if (queueLength == 0) return;
 
     
-    console.log("111111111111111111111111111111111111111");
     const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
     //  If user is NOT first → send queue position
     const queueList = await pubClient.lRange(queueKey, 0, -1);
@@ -208,7 +205,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
   if (user.roomId === roomId) break;
   waitTime += user.maximum_time;
 }
- console.log("222222222222222222222222222222");
     if (queueLength >= 1) {
       console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
         socket.emit("queue_position", {
@@ -217,7 +213,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
         waitTime:waitTime * 60,
       });
     }
- console.log("33333333333333333333333");
     //  If queue full (LIMIT = 5)
     if (queueLength > 5) {
        socket.emit("queue_full", {
@@ -232,7 +227,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
       
     }
- console.log("44444444444444444444444");
     // If first user → send request to astrologer
     safePublish(pubClient, "chat_requests", {
       message: "Chat request sent successfully",

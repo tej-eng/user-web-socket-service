@@ -194,6 +194,28 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     const queueLength = await pubClient.lLen(queueKey);
     if (queueLength == 0) return;
 
+    
+
+    const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
+    //  If user is NOT first → send queue position
+    const queueList = await pubClient.lRange(queueKey, 0, -1);
+    let waitTime = 0;
+    // Sum max time of all users before current user
+  for (let i = 0; i < queueList.length; i++) {
+  const user = JSON.parse(queueList[i]);
+  // stop when current user reached
+  if (user.roomId === roomId) break;
+  waitTime += user.maximum_time;
+}
+    if (queueLength >= 1) {
+      console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
+      return socket.emit("queue_position", {
+        message: `You are in queue`,
+        position: queueLength-1,
+        waitTime:waitTime * 60,
+      });
+    }
+
     //  If queue full (LIMIT = 5)
     if (queueLength >= 5) {
        socket.emit("queue_full", {
@@ -209,24 +231,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       
     }
 
-    const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
-    //  If user is NOT first → send queue position
-    const queueList = await pubClient.lRange(queueKey, 0, -1);
-    let waitTime = 0;
-    // Sum max time of all users before current user
-  for (let i = 0; i < queueList.length; i++) {
-  const user = JSON.parse(queueList[i]);
-  // stop when current user reached
-  if (user.roomId === roomId) break;
-  waitTime += user.maximum_time;
-}
-    if (queueLength >= 1 && currentRoomId) {
-      return socket.emit("queue_position", {
-        message: `You are in queue`,
-        position: queueLength-1,
-        waitTime:waitTime * 60,
-      });
-    }
     // If first user → send request to astrologer
     safePublish(pubClient, "chat_requests", {
       message: "Chat request sent successfully",
@@ -339,7 +343,6 @@ socket.on("send_message", async (data) => {
 
       onSafe("cancel_chat_request", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
-                 console.log("Chat request cancelled forsssssssssssssssssssssssssss room:", data.room_id);
                 handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
@@ -347,7 +350,6 @@ socket.on("send_message", async (data) => {
 
       onSafe("queue_cancel", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
-       console.log("Chat requestqqqquuuuuu cancelllllllllllllllll cancelled for room:", data.room_id);
                 handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });

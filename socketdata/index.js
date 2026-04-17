@@ -341,13 +341,13 @@ socket.on("send_message", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient,pubClient);
                 io.emit("chat_rejected", data);
                 
-        safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
+        safePublish(pubClient, "chat_reject_auto", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("queue_cancel", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient,pubClient);
                 io.emit("chat_rejected", data);
-        safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
+        safePublish(pubClient, "chat_reject_auto", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("autoDisconnect", async (data) => {

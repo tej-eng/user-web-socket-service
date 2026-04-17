@@ -456,6 +456,7 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     let cumulativeWait = 0; // total wait time before current user
 
     for (let i = 0; i < queueList.length; i++) {
+      console.log(`Updating position for roomssssssssssssssssssssss ---------------------------to ${i}`);
       try {
         const parsed = JSON.parse(queueList[i]);
 
@@ -466,7 +467,7 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
           message: `Your position is ${i}. Estimated wait time ${cumulativeWait} mins`
         };
 
-        console.log("Queue Update:", payload);
+        console.log("Queue Updatessssssssssssssssssssss:", payload);
 
         await pubClient.publish("queue_update", JSON.stringify(payload));
 

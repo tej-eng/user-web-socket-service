@@ -461,16 +461,16 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
 
         const payload = {
           roomId: parsed.roomId,
-          position: i + 1,
-          waitTime: cumulativeWait, // ✅ dynamic wait time
-          message: `Your position is ${i + 1}. Estimated wait time ${cumulativeWait} mins`
+          position: i,
+          waitTime: cumulativeWait, //
+          message: `Your position is ${i}. Estimated wait time ${cumulativeWait} mins`
         };
 
         console.log("Queue Update:", payload);
 
         await pubClient.publish("queue_update", JSON.stringify(payload));
 
-        // ✅ Add current user's time for next users
+        // Add current user's time for next users
         cumulativeWait += parsed.maximum_time || 0;
 
       } catch (err) {

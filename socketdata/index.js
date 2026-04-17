@@ -132,7 +132,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
               break;
             case "queue_update":
               console.log("Queue update received for room=========================================:", data.roomId, "Position:", data.position);
-              io.to(data.roomId).emit("queue_update", data);
+              io.to(data.roomId).emit("queue_position", data);
               break;
 
             case "end_chat_by_astrologer":
@@ -343,14 +343,12 @@ socket.on("send_message", async (data) => {
 
       onSafe("cancel_chat_request", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
-                handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("queue_cancel", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
-                handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });

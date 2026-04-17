@@ -22,11 +22,12 @@ export const handleAcceptChat = async (roomId, prisma, redis) => {
       startedAt: new Date()
     }
   });
-
+  const queueKey = `chat_queue:${intake.astrologerId}`;
+   await updateQueuePositions(queueKey, redis, pubClient);
 
   //  CORRECT REDIS MULTI (v4)
-  const multi = redis.multi();
-    const queueKey = `chat_queue:${intake.astrologerId}`;
+    const multi = redis.multi();
+    //const queueKey = `chat_queue:${intake.astrologerId}`;
     const queueList = await redis.lRange(queueKey, 0, -1);
     console.log("Current queue list for astrologerqqqqqqqqqqqqqqqqqqqqqqqqq", intake.astrologerId, queueList);
 
@@ -373,20 +374,23 @@ const parsed = JSON.parse(data);
     }
 
     // Update queue positions (optional but useful)
-    const queue = await redis.lRange(queueKey, 0, -1);
+    const queueKey = await redis.lRange(queueKey, 0, -1);
+    //-------------------------------------------------------
+    await updateQueuePositions(queueKey, redis, pubClient);
+    //-------------------------------------------------------
 
-    queue.forEach((userData, index) => {
-      console.log(`Updating position for room ----------------------------${JSON.parse(userData).roomId} to ${index + 1}`);
-      pubClient.publish(
-        "queue_update",
-        JSON.stringify({
-          roomId: JSON.parse(userData).roomId,
-          position: index + 1,
-          waitTime:120,
-          message:`Now Your position is changed in queue ${index + 1}`
-        })
-      );
-    });
+    // queue.forEach((userData, index) => {
+    //   console.log(`Updating position for room ----------------------------${JSON.parse(userData).roomId} to ${index + 1}`);
+    //   pubClient.publish(
+    //     "queue_update",
+    //     JSON.stringify({
+    //       roomId: JSON.parse(userData).roomId,
+    //       position: index + 1,
+    //       waitTime:120,
+    //       message:`Now Your position is changed in queue ${index + 1}`
+    //     })
+    //   );
+    // });
 
     return nextRoomId;
 
@@ -404,6 +408,9 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
     if (!intake) return null;
 
     const queueKey = `chat_queue:${intake.astrologerId}`;
+    //-------------------------------------------------------
+    await updateQueuePositions(queueKey, redis, pubClient);
+    //-------------------------------------------------------
 
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
@@ -438,5 +445,40 @@ export const handleRejectChat = async (roomId, prisma, redis) => {
   } catch (error) {
     console.error("handleRejectChat error:", error);
     throw error;
+  }
+};
+export const updateQueuePositions = async (queueKey, redis, pubClient) => {
+  try {
+    const queueList = await redis.lRange(queueKey, 0, -1);
+
+    if (!queueList || queueList.length === 0) return;
+
+    let cumulativeWait = 0; // total wait time before current user
+
+    for (let i = 0; i < queueList.length; i++) {
+      try {
+        const parsed = JSON.parse(queueList[i]);
+
+        const payload = {
+          roomId: parsed.roomId,
+          position: i + 1,
+          waitTime: cumulativeWait, // ✅ dynamic wait time
+          message: `Your position is ${i + 1}. Estimated wait time ${cumulativeWait} mins`
+        };
+
+        console.log("Queue Update:", payload);
+
+        await pubClient.publish("queue_update", JSON.stringify(payload));
+
+        // ✅ Add current user's time for next users
+        cumulativeWait += parsed.maximum_time || 0;
+
+      } catch (err) {
+        console.error("Queue parse error:", err);
+      }
+    }
+
+  } catch (error) {
+    console.error("updateQueuePositions error:", error);
   }
 };

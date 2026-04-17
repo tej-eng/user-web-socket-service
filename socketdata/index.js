@@ -339,12 +339,16 @@ socket.on("send_message", async (data) => {
 
       onSafe("cancel_chat_request", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
+                 console.log("Chat request cancelled forsssssssssssssssssssssssssss room:", data.room_id);
+                handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });
 
       onSafe("queue_cancel", async (data) => {
        await handleRejectChat(data.room_id, prisma, redisClient);
+       console.log("Chat requestqqqquuuuuu cancelllllllllllllllll cancelled for room:", data.room_id);
+                handleRejectChat(data.room_id, prisma, redisClient);
                 io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_rejected", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id });
       });

@@ -408,10 +408,6 @@ export const handleRejectChat = async (roomId, prisma, redis,pubClient) => {
     if (!intake) return null;
 
     const queueKey = `chat_queue:${intake.astrologerId}`;
-    //-------------------------------------------------------
-    await updateQueuePositions(queueKey, redis, pubClient);
-    //-------------------------------------------------------
-
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
 
@@ -434,11 +430,15 @@ export const handleRejectChat = async (roomId, prisma, redis,pubClient) => {
     }
 
     // remove user from set
-    await redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+   const check= await redis.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
 
     multi.del(`chat_request_data:${roomId}`);
 
     await multi.exec();
+   if(check){
+    await updateQueuePositions(queueKey, redis, pubClient);
+   }
+    
 
     return intake.astrologerId;
 

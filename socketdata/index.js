@@ -353,7 +353,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       /* =========================
          RECHARGE
       ========================= */
-
+ 
+      
       onSafe("customer_recharge", (data) => {
         socket.to(data.room_id).emit(
           "open_popup_astrologer"

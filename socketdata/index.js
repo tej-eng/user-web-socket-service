@@ -161,6 +161,77 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
         });
       };
+      
+      onSafe("chat_request", async (data) => {
+  try {
+    const astroId = data.astro_id;
+    const queueKey = `chat_queue:${astroId}`;
+    const roomId = data.room_id;
+    socket.join(String(roomId));
+    socket.roomId = String(roomId);
+
+    // Get current queue length
+    const queueLength = await pubClient.lLen(queueKey);
+    if (queueLength == 0) return;
+
+    
+    const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
+    //  If user is NOT first → send queue position
+    const queueList = await pubClient.lRange(queueKey, 0, -1);
+    let waitTime = 0;
+    // Sum max time of all users before current user
+  for (let i = 0; i < queueList.length; i++) {
+  const user = JSON.parse(queueList[i]);
+  // stop when current user reached
+  if (user.roomId === roomId) break;
+  waitTime += user.maximum_time;
+}
+    if (queueLength >= 1) {
+      console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
+        socket.emit("queue_position", {
+        message: `You are in queue`,
+        position: queueLength-1,
+        waitTime:waitTime * 60,
+      });
+    }
+    //  If queue full (LIMIT = 5)
+    if (queueLength > 5) {
+       socket.emit("queue_full", {
+        message: "Astrologer is busy. Please try another astrologer.",
+        status: "FULL"
+      });
+      
+      return socket.emit("chat_rejected", {
+        message: "Astrologer is busy. Please try another astrologer.",
+        status: "FULL"
+      });
+
+      
+    }
+    // If first user → send request to astrologer
+    safePublish(pubClient, "chat_requests", {
+      message: "Chat request sent successfully",
+      userName: sanitizeHtml(data.userName || ""),
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      timeOfBirth: data.timeOfBirth,
+      occupation: sanitizeHtml(data.occupation || ""),
+      location: sanitizeHtml(data.location || ""),
+      astro_id: astroId,
+      user_id: data.user_id,
+      is_promotional: data.is_promotional,
+      room_id: roomId,
+      maximum_time: data.maximum_time,
+      user_image: data.user_image,
+      phoneNumber: "",
+      position: queueLength
+    });
+
+  } catch (err) {
+    console.error("chat_request error:", err);
+  }
+});
+
 
       /* =========================
          JOIN CHAT

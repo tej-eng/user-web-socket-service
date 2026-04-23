@@ -395,12 +395,13 @@ socket.on("send_message", async (data) => {
       ========================= */
 
       onSafe("typing", (data) => {
+         console.log("Typing event receivedjjjjjjjjjj:", data);  
         socket.to(data.room_id).emit("typing", {
           typing: data.typing,
           user_name: data.user_name,
           roomid: data.room_id,
         });
-
+          console.log("Typing event receivedHHHHHHHHHHHHHHHHHHHHHHHHHHHH:", data);  
         safePublish(pubClient, "user_typing", {
           typing: data.typing,
           user_name: data.user_name,

@@ -120,6 +120,13 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
             case "messages":
               if (data.sender === "Astrologer") {
+                try{
+                  await redisClient.rPush(
+                  `chat_messages:${roomId}`,
+                  JSON.stringify(formattedMessage)
+               );
+                }catch(err){logEvent("MessageEmitError", err.stack, true)}
+
                 io.to(data.room_id).emit("receive_message", data);
               }
               break;

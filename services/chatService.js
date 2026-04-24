@@ -481,3 +481,4 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     console.error("updateQueuePositions error:", error);
   }
 };
+

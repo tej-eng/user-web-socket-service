@@ -121,8 +121,19 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
             case "messages":
               if (data.sender === "Astrologer") {
                 try{
+                const formattedMessage = {
+                msg_id: data.msg_id || `${Date.now()}${Math.random()}`,
+                sender_id: data.sender_id,
+                room_id: data.room_id,
+                received_id: data.received_id,
+                message: data.message,
+                image: data.image || null,
+                sender: data.sender,
+                replyTo: data.replyTo || null,
+                time: data.time || Date.now(),
+                };
                   await redisClient.rPush(
-                  `chat_messages:${roomId}`,
+                  `chat_messages:${data.room_id}`,
                   JSON.stringify(formattedMessage)
                );
                 }catch(err){logEvent("MessageEmitError", err.stack, true)}

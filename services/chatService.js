@@ -302,7 +302,7 @@ export const processNextChat = async (
 ) => {
   try {
     const queueKey = `chat_queue:${astrologerId}`;
-      const queueItem = await redis.lIndex(queueKey, 0);
+      const queueItem = await redis.lpop(queueKey);
       console.log("Next queue item for astrologer", astrologerId, queueItem);
       if (!queueItem) return null;
       const parsedQueue = JSON.parse(queueItem);
@@ -324,7 +324,7 @@ export const processNextChat = async (
             for (const item of queueList) {
             const parsed = JSON.parse(item);
 
-            if (parsed.roomId === roomId) {
+            if (parsed.roomId === nextRoomId) {
             itemToRemove = item;
             break;
             }

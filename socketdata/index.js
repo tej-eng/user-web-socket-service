@@ -246,23 +246,33 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       
     }
     // If first user → send request to astrologer
-    safePublish(pubClient, "chat_requests", {
-      message: "Chat request sent successfully",
-      userName: sanitizeHtml(data.userName || ""),
-      gender: data.gender,
-      dateOfBirth: data.dateOfBirth,
-      timeOfBirth: data.timeOfBirth,
-      occupation: sanitizeHtml(data.occupation || ""),
-      location: sanitizeHtml(data.location || ""),
-      astro_id: astroId,
-      user_id: data.user_id,
-      is_promotional: data.is_promotional,
-      room_id: roomId,
-      maximum_time: data.maximum_time,
-      user_image: data.user_image,
-      phoneNumber: "",
-      position: queueLength
-    });
+   // If first user → send to astrologer
+if (queueLength === 1) {
+  console.log("First user → sending to astrologer");
+
+  safePublish(pubClient, "chat_requests", {
+    message: "Chat request sent successfully",
+    userName: sanitizeHtml(data.userName || ""),
+    gender: data.gender,
+    dateOfBirth: data.dateOfBirth,
+    timeOfBirth: data.timeOfBirth,
+    occupation: sanitizeHtml(data.occupation || ""),
+    location: sanitizeHtml(data.location || ""),
+    astro_id: astroId,
+    user_id: data.user_id,
+    room_id: roomId,
+    maximum_time: data.maximum_time,
+    user_image: data.user_image,
+  });
+}else {
+  console.log("User added to queue, not sent to astrologer");
+
+  socket.emit("queue_position", {
+    message: `You are in queue`,
+    position: queueLength - 1,
+    waitTime: waitTime * 60,
+  });
+}
 
   } catch (err) {
     console.error("chat_request error:", err);

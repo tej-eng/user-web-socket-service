@@ -302,7 +302,7 @@ export const processNextChat = async (
 ) => {
   try {
     const queueKey = `chat_queue:${astrologerId}`;
-      const queueItem = await redis.lpop(queueKey);
+     const queueItem = await redis.lPop(queueKey);
       console.log("Next queue item for astrologer", astrologerId, queueItem);
       if (!queueItem) return null;
       const parsedQueue = JSON.parse(queueItem);

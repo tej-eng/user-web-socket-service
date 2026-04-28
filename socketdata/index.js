@@ -380,7 +380,7 @@ socket.on("send_message", async (data) => {
         safePublish(pubClient, "chat_cancel_by_user", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id ,message:"User has cancelled the chat request from queue"});
       });
 
-      onSafe("autoDisconnect", async (data) => {
+      onSafe("autodisconnect", async (data) => {
       const roomId = String(data.room_id);
       const astroId = String(data.astroid);
       await handleRejectChat(roomId, prisma, redisClient,pubClient);

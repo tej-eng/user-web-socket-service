@@ -218,19 +218,20 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     let waitTime = 0;
     // Sum max time of all users before current user
   for (let i = 0; i < queueList.length; i++) {
+    console.log("Queue lengthhhhhhhhhhhhhhhhh:", queueList.length);
   const user = JSON.parse(queueList[i]);
   // stop when current user reached
   if (user.roomId === roomId) break;
   waitTime += user.maximum_time;
 }
-    if (queueLength >= 1) {
-      console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
-        socket.emit("queue_position", {
-        message: `You are in queue`,
-        position: queueLength-1,
-        waitTime:waitTime * 60,
-      });
-    }
+    // if (queueLength >= 1) {
+    //   console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
+    //     socket.emit("queue_position", {
+    //     message: `You are in queue`,
+    //     position: queueLength-1,
+    //     waitTime:waitTime * 60,
+    //   });
+    // }
     //  If queue full (LIMIT = 5)
     if (queueLength > 5) {
        socket.emit("queue_full", {

@@ -248,7 +248,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       
     }
    // If first user → send to astrologer
-if (queueLength === 1) {
+   const exists = await redis.exists(`active_chat:${roomId}`);
+if (queueLength === 1  && exists === 0) {
   console.log("First user → sending to astrologer");
 
   safePublish(pubClient, "chat_requests", {
@@ -265,10 +266,12 @@ if (queueLength === 1) {
     maximum_time: data.maximum_time,
     user_image: data.user_image,
   });
-}else {
+}
+
+else {
   console.log("User added to queue, not sent to astrologer");
  
-const exists = await redis.exists(`active_chat:${roomId}`);
+
   socket.emit("queue_position", {
     message: `You are in queue`,
     position: queueLength - 1,

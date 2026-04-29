@@ -247,7 +247,6 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
       
     }
-    // If first user → send request to astrologer
    // If first user → send to astrologer
 if (queueLength === 1) {
   console.log("First user → sending to astrologer");
@@ -268,11 +267,13 @@ if (queueLength === 1) {
   });
 }else {
   console.log("User added to queue, not sent to astrologer");
-
+ 
+const exists = await redis.exists(`active_chat:${roomId}`);
   socket.emit("queue_position", {
     message: `You are in queue`,
     position: queueLength - 1,
     waitTime: waitTime * 60,
+    active: exists === 1 ? true : false,
   });
 }
 

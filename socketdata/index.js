@@ -355,7 +355,7 @@ socket.on("send_message", async (data) => {
           redisClient,
           pubClient
         );
-      }, 3000); 
+      }, 5000); 
     }
      
 

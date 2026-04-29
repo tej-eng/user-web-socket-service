@@ -249,10 +249,8 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
    // If first user → send to astrologer
    const exists = await pubClient.exists(`current_chat:${astroId}`);
-   console.log("Queue length:", queueLength, "eeeeeeeeeeeeeeeeeeeeeee:", exists);
 
 if (queueLength === 1  &&  !exists ) {
-  console.log("First user → sending to astrologer");
 
   safePublish(pubClient, "chat_requests", {
     message: "Chat request sent successfully",
@@ -271,8 +269,6 @@ if (queueLength === 1  &&  !exists ) {
 }
 
 else {
-  console.log("User added to queue, not sent to astrologer");
- 
 
   socket.emit("queue_position", {
     message: `You are in queue`,

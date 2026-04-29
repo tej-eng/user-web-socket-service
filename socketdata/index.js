@@ -225,15 +225,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
   console.log("User in queue MAXTTTTTTTTTTTTTTIME:", user.userName, "Max time:", user.maximum_time);
   waitTime += user.maximum_time;
 }
-    // if (queueLength >= 1) {
-    //   console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
-    //     socket.emit("queue_position", {
-    //     message: `You are in queue`,
-    //     position: queueLength-1,
-    //     waitTime:waitTime * 60,
-    //   });
-    // }
-    //  If queue full (LIMIT = 5)
+    
     if (queueLength > 5) {
        socket.emit("queue_full", {
         message: "Astrologer is busy. Please try another astrologer.",
@@ -252,6 +244,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
    console.log("Queue length:", queueLength, "Current chat exists:", exists);
 
 if (queueLength === 1  &&  !exists ) {
+  await pubClient.set(`first_chat_time:${astroId}`, data.maximum_time);
 
   safePublish(pubClient, "chat_requests", {
     message: "Chat request sent successfully",
@@ -271,10 +264,11 @@ if (queueLength === 1  &&  !exists ) {
 
 else {
    console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
+  const firstChatTime = await pubClient.get(`first_chat_time:${astroId}`);
   socket.emit("queue_position", {
     message: `You are in queue`,
     position: exists === 1 ? queueLength : queueLength-1,
-    waitTime: waitTime * 60,
+    waitTime:exists === 1 ? firstChatTime : waitTime * 60,
     active: exists === 1 ? true : false,
   });
 }

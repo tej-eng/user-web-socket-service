@@ -249,6 +249,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
    // If first user → send to astrologer
    const exists = await pubClient.exists(`current_chat:${astroId}`);
+   console.log("Queue length:", queueLength, "Current chat exists:", exists);
 
 if (queueLength === 1  &&  !exists ) {
 
@@ -269,10 +270,10 @@ if (queueLength === 1  &&  !exists ) {
 }
 
 else {
-
+   console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
   socket.emit("queue_position", {
     message: `You are in queue`,
-    position: queueLength - 1,
+    position: exists === 1 ? queueLength : queueLength-1,
     waitTime: waitTime * 60,
     active: exists === 1 ? true : false,
   });

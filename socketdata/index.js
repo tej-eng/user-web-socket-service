@@ -248,7 +248,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       
     }
    // If first user → send to astrologer
-   const exists = await pubClient.exists(`active_chat:${roomId}`);
+   const exists = await pubClient.exists(`current_chat:${astroId}`);
    console.log("Queue length:", queueLength, "eeeeeeeeeeeeeeeeeeeeeee:", exists);
 
 if (queueLength === 1  &&  !exists ) {

@@ -249,7 +249,9 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
     }
    // If first user → send to astrologer
    const exists = await pubClient.exists(`active_chat:${roomId}`);
-if (queueLength === 1  && exists === 0) {
+   console.log("Queue length:", queueLength, "eeeeeeeeeeeeeeeeeeeeeee:", exists);
+
+if (queueLength === 1  &&  !exists ) {
   console.log("First user → sending to astrologer");
 
   safePublish(pubClient, "chat_requests", {

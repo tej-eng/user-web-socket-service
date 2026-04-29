@@ -268,7 +268,7 @@ else {
   socket.emit("queue_position", {
     message: `You are in queue`,
     position: exists === 1 ? queueLength : queueLength-1,
-    waitTime:exists === 1 ? firstChatTime : waitTime * 60,
+    waitTime:exists === 1 ? firstChatTime * 60 : waitTime * 60,
     active: exists === 1 ? true : false,
   });
 }

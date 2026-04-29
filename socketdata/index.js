@@ -248,7 +248,7 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
       
     }
    // If first user → send to astrologer
-   const exists = await redis.exists(`active_chat:${roomId}`);
+   const exists = await pubClient.exists(`active_chat:${roomId}`);
 if (queueLength === 1  && exists === 0) {
   console.log("First user → sending to astrologer");
 

@@ -22,7 +22,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
     },
   });
   const queueKey = `chat_queue:${intake.astrologerId}`;
-  await updateQueuePositions(queueKey, redis, pubClient);
+  //await updateQueuePositions(queueKey, redis, pubClient);
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
@@ -440,12 +440,13 @@ export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
 export const updateQueuePositions = async (queueKey, redis, pubClient) => {
   try {
     const queueList = await redis.lRange(queueKey, 0, -1);
-
+         
     if (!queueList || queueList.length === 0) return;
     //----------------
         let waitTime = 0;
         for (let i = 0; i < queueList.length; i++) {
         const user = JSON.parse(queueList[i]);
+        console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:",user);
         if (user.roomId === roomId) break;
         waitTime += user.maximum_time;
         }

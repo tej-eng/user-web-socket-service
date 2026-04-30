@@ -10,6 +10,7 @@ import {
   finalizeChatSession,
   processNextChat,
   handleRejectChat,
+  updateQueuePositions,
 } from "../services/chatService.js";
 
 /* =========================

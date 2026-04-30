@@ -412,7 +412,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
                 for (const item of queueList) {
                 const parsed = JSON.parse(item);
-
+                 console.log("Parsed queue item:ffffffffffffffffffffffffffff", parsed, "Comparing with roomId:", data);
                 if (parsed.roomId === data.roomId) {
                   console.log("Found item to remove from queue33333333333333333:", parsed);
                 itemToRemove = item;

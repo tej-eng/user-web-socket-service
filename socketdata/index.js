@@ -192,11 +192,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
 
                 if (itemToRemove) {
-                await redisClient.lRem(queueKey, 1, itemToRemove);
+                const check =await redisClient.lRem(queueKey, 1, itemToRemove);
+                if(check){
+                  console.log("Item removed from queue successfully");
+                  await updateQueuePositions(queueKey, redisClient, pubClient);
+                }
                 }
               //-------END CODE FOR DELETE KEY AFTER ASTRLOGER CHAT END-------
               
-              await updateQueuePositions(queueKey, redisClient, pubClient);
+              
               setTimeout(async () => {
                 try {
                   
@@ -412,10 +416,14 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
 
                 if (itemToRemove) {
-                await pubClient.lRem(queueKey, 1, itemToRemove);
+                const check = await pubClient.lRem(queueKey, 1, itemToRemove);
+                if (check) {
+                  console.log("Item removed from queue successfully");
+                  await updateQueuePositions(queueKey, redisClient, pubClient);
+                }
                 }
               //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
-           await updateQueuePositions(queueKey, redisClient, pubClient);
+           
           let queueLength = await pubClient.lLen(queueKey);
           if (queueLength > 0) {
             setTimeout(async () => {

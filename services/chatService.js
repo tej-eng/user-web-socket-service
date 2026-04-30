@@ -454,7 +454,7 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
-          waitTime += parsed.maximum_time;
+          waitTime += parsed.maximum_time || 0; // accumulate wait time based on maximum_time of users ahead in the queue
           console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:", parsed, "cumulativeWait", waitTime, "position", i);
 
         const payload = {
@@ -468,7 +468,6 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
         await pubClient.publish("queue_update", JSON.stringify(payload));
 
         // Add current user's time for next users
-        cumulativeWait += parsed.maximum_time || 0;
       } catch (err) {
         console.error("Queue parse error:", err);
       }

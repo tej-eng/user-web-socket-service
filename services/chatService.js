@@ -27,25 +27,25 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
   //const queueKey = `chat_queue:${intake.astrologerId}`;
-  const queueList = await redis.lRange(queueKey, 0, -1);
-  console.log(
-    "Current queue list for astrologerqqqqqqqqqqqqqqqqqqqqqqqqq",
-    intake.astrologerId,
-    queueList,
-  );
+  //const queueList = await redis.lRange(queueKey, 0, -1);
+  // console.log(
+  //   "Current queue list for astrologerqqqqqqqqqqqqqqqqqqqqqqqqq",
+  //   intake.astrologerId,
+  //   queueList,
+  // );
 
-  const itemToRemove = queueList.find((item) => {
-    try {
-      return JSON.parse(item).roomId === roomId;
-    } catch {
-      return false;
-    }
-  });
+  // const itemToRemove = queueList.find((item) => {
+  //   try {
+  //     return JSON.parse(item).roomId === roomId;
+  //   } catch {
+  //     return false;
+  //   }
+  // });
 
-  if (itemToRemove) {
-    console.log("Removing item from queuevvvvvvvvvvvvvvvvv:", itemToRemove);
-    multi.lRem(queueKey, 1, itemToRemove);   // remove key from queue on accept chat
-  }
+  // if (itemToRemove) {
+  //   console.log("Removing item from queuevvvvvvvvvvvvvvvvv:", itemToRemove);
+  //   multi.lRem(queueKey, 1, itemToRemove);   // remove key from queue on accept chat
+  // }
   //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
   multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(

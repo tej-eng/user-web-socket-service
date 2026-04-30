@@ -179,6 +179,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               //------DELETE KEY AFTER ASTRLOGER CHAT END--------
                 let queueKey = `chat_queue:${data.astroId}`;
                 const queueList = await redisClient.lRange(queueKey, 0, -1);
+                console.log("Queue list before removing item:", queueList);
 
                 let itemToRemove = null;
 
@@ -192,9 +193,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
 
                 if (itemToRemove) {
+                  console.log("Item to remove from queueccccccccc:", itemToRemove);
                 const check =await redisClient.lRem(queueKey, 1, itemToRemove);
                 if(check){
-                  console.log("Item removed from queue successfully");
+                  console.log("Item removed from queue successfully after astrologer ended chat");
                   await updateQueuePositions(queueKey, redisClient, pubClient);
                 }
                 }

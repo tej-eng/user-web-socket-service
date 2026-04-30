@@ -262,16 +262,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           let waitTime = 0;
           // Sum max time of all users before current user
           for (let i = 0; i < queueList.length; i++) {
-            console.log("Queue lengthhhhhhhhhhhhhhhhh:", queueList.length);
             const user = JSON.parse(queueList[i]);
             // stop when current user reached
             if (user.roomId === roomId) break;
-            console.log(
-              "User in queue MAXTTTTTTTTTTTTTTIME:",
-              user.userName,
-              "Max time:",
-              user.maximum_time,
-            );
             waitTime += user.maximum_time;
           }
 
@@ -286,21 +279,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               status: "FULL",
             });
           }
-          // If first user → send to astrologer
-          const exists = await pubClient.exists(`current_chat:${astroId}`);
-          console.log(
-            "Queue length:",
-            queueLength,
-            "Current chat exists:",
-            exists,
-          );
 
-          if (queueLength === 1 && !exists) {
-            await pubClient.set(
-              `first_chat_time:${astroId}`,
-              data.maximum_time,
-            );
-
+          if (queueLength === 1 ) {
             safePublish(pubClient, "chat_requests", {
               message: "Chat request sent successfully",
               userName: sanitizeHtml(data.userName || ""),
@@ -319,14 +299,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             console.log(
               `User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`,
             );
-            const firstChatTime = await pubClient.get(
-              `first_chat_time:${astroId}`,
-            );
+            
             socket.emit("queue_position", {
               message: `You are in queue`,
-              position: exists === 1 ? queueLength : queueLength - 1,
-              waitTime: exists === 1 ? firstChatTime * 60 : waitTime * 60,
-              active: exists === 1 ? true : false,
+              position: queueLength - 1,
+              waitTime: waitTime * 60,
             });
           }
         } catch (err) {

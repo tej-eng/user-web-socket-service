@@ -185,7 +185,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                     await processNextChat(data.astroId, redisClient, pubClient);
                   }
                 } catch (err) {
-                  console.error("Delayed processNextChat error:", err);
+                  console.error("Delayed processNextChat errorAAAAAAAAA:", err);
                 }
               }, 8000);
 

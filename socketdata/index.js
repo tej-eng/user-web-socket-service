@@ -406,6 +406,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 let queueKey = `chat_queue:${data.astroId}`;
                 console.log("Queue key to remove item fromggggggggggggg:", queueKey);
                 const queueList = await pubClient.lRange(queueKey, 0, -1);
+                console.log("Queue list before removing item:22222222222", queueList);
 
                 let itemToRemove = null;
 
@@ -413,7 +414,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 const parsed = JSON.parse(item);
 
                 if (parsed.roomId === data.roomId) {
+                  console.log("Found item to remove from queue33333333333333333:", parsed);
                 itemToRemove = item;
+                console.log("Item to remove from queue444444444:", itemToRemove);
                 break;
                 }
                 }

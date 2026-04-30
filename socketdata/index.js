@@ -398,7 +398,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
               //------DELETE KEY AFTER USER CHAT END--------
                 let queueKey = `chat_queue:${data.astroId}`;
-                const queueList = await redis.lRange(queueKey, 0, -1);
+                const queueList = await pubClient.lRange(queueKey, 0, -1);
 
                 let itemToRemove = null;
 
@@ -412,7 +412,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
 
                 if (itemToRemove) {
-                await redis.lRem(queueKey, 1, itemToRemove);
+                await pubClient.lRem(queueKey, 1, itemToRemove);
                 }
               //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
            await updateQueuePositions(queueKey, redisClient, pubClient);

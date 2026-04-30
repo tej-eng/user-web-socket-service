@@ -197,13 +197,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 const check =await redisClient.lRem(queueKey, 1, itemToRemove);
                 if(check){
                   console.log("Item removed from queue successfully after astrologer ended chat");
-                  await updateQueuePositions(queueKey, redisClient, pubClient);
-                }
-                }
-              //-------END CODE FOR DELETE KEY AFTER ASTRLOGER CHAT END-------
-              
-              
-              setTimeout(async () => {
+                 const res = await updateQueuePositions(queueKey, redisClient, pubClient);
+                 if(res){
+                    setTimeout(async () => {
                 try {
                   
                   const queueLength = await pubClient.lLen(queueKey);
@@ -214,6 +210,14 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   console.error("Delayed processNextChat errorAAAAAAAAA:", err);
                 }
               }, 8000);
+
+                 }
+                }
+                }
+              //-------END CODE FOR DELETE KEY AFTER ASTRLOGER CHAT END-------
+              
+              
+            
 
               break;
 
@@ -418,17 +422,20 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 if (itemToRemove) {
                 const check = await pubClient.lRem(queueKey, 1, itemToRemove);
                 if (check) {
-                  await updateQueuePositions(queueKey, redisClient, pubClient);
+                  const res=await updateQueuePositions(queueKey, redisClient, pubClient);
+                  if(res){
+                    let queueLength = await pubClient.lLen(queueKey);
+                    if (queueLength > 0) {
+                    setTimeout(async () => {
+                    await processNextChat(astroId, redisClient, pubClient);
+                    }, 5000);
+                    }
+                  }
                 }
                 }
               //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
            
-          let queueLength = await pubClient.lLen(queueKey);
-          if (queueLength > 0) {
-            setTimeout(async () => {
-              await processNextChat(astroId, redisClient, pubClient);
-            }, 5000);
-          }
+          
         } catch (error) {
           console.error("chat complete error", error);
         }

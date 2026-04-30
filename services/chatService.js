@@ -26,27 +26,6 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  //const queueKey = `chat_queue:${intake.astrologerId}`;
-  //const queueList = await redis.lRange(queueKey, 0, -1);
-  // console.log(
-  //   "Current queue list for astrologerqqqqqqqqqqqqqqqqqqqqqqqqq",
-  //   intake.astrologerId,
-  //   queueList,
-  // );
-
-  // const itemToRemove = queueList.find((item) => {
-  //   try {
-  //     return JSON.parse(item).roomId === roomId;
-  //   } catch {
-  //     return false;
-  //   }
-  // });
-
-  // if (itemToRemove) {
-  //   console.log("Removing item from queuevvvvvvvvvvvvvvvvv:", itemToRemove);
-  //   multi.lRem(queueKey, 1, itemToRemove);   // remove key from queue on accept chat
-  // }
-  //multi.lRem(`chat_queue:${intake.astrologerId}`, 1, roomId); //used for production
   multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
     `active_chat:${roomId}`,
@@ -109,24 +88,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
     if (currentRoom) {
       await redis.del(`current_chat:${astroId}`);
     }
-    //------------------------REMOVE FROM QUEUE IF STILL PRESENT (EDGE CASE)----------------------
-    // const queueKey = `chat_queue:${astroId}`;
-    // const queueList = await redis.lRange(queueKey, 0, -1);
-
-    // let itemToRemove = null;
-
-    // for (const item of queueList) {
-    //   const parsed = JSON.parse(item);
-
-    //   if (parsed.roomId === roomId) {
-    //     itemToRemove = item;
-    //     break;
-    //   }
-    // }
-
-    // if (itemToRemove) {
-    //   await redis.lRem(queueKey, 1, itemToRemove);
-    // }
+   
 
     /* =========================
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
@@ -307,24 +269,6 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     // PREVENT DUPLICATE / ALREADY ACTIVE CHAT
     const isActive = await redis.exists(`active_chat:${nextRoomId}`);
     if (isActive) {
-      // OPTIONAL: remove it from queue (cleanup)
-      // const queueList = await redis.lRange(queueKey, 0, -1);
-
-      // let itemToRemove = null;
-
-      // for (const item of queueList) {
-      //   const parsed = JSON.parse(item);
-
-      //   if (parsed.roomId === nextRoomId) {
-      //     itemToRemove = item;
-      //     break;
-      //   }
-      // }
-
-      // if (itemToRemove) {
-      //   await redis.lRem(queueKey, 1, itemToRemove);
-      // }
-
       // Try next user recursively
       return await processNextChat(astrologerId, redis, pubClient);
     }
@@ -362,26 +306,6 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     );
     if (result) {
     }
-
-    // Update queue positions (optional but useful)
-    //const queueKey = await redis.lRange(queueKey, 0, -1);
-    //-------------------------------------------------------
-    //await updateQueuePositions(queueKey, redis, pubClient);
-    //-------------------------------------------------------
-
-    // queue.forEach((userData, index) => {
-    //   console.log(`Updating position for room ----------------------------${JSON.parse(userData).roomId} to ${index + 1}`);
-    //   pubClient.publish(
-    //     "queue_update",
-    //     JSON.stringify({
-    //       roomId: JSON.parse(userData).roomId,
-    //       position: index + 1,
-    //       waitTime:120,
-    //       message:`Now Your position is changed in queue ${index + 1}`
-    //     })
-    //   );
-    // });
-
     return nextRoomId;
   } catch (error) {
     console.error("processNextChat error:", error);
@@ -442,15 +366,7 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     const queueList = await redis.lRange(queueKey, 0, -1);
          
     if (!queueList || queueList.length === 0) return;
-    //----------------
         let waitTime = 0;
-        // for (let i = 0; i < queueList.length; i++) {
-        // const user = JSON.parse(queueList[i]);
-        // console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:",user);
-        // if (user.roomId === roomId) break;
-        // waitTime += user.maximum_time;
-        // }
-    //-------------------
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
@@ -475,4 +391,5 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
   } catch (error) {
     console.error("updateQueuePositions error:", error);
   }
+  return true;
 };

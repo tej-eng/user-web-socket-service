@@ -404,28 +404,20 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
               //------DELETE KEY AFTER USER CHAT END--------
                 let queueKey = `chat_queue:${data.astroId}`;
-                console.log("Queue key to remove item fromggggggggggggg:", queueKey);
                 const queueList = await pubClient.lRange(queueKey, 0, -1);
-                console.log("Queue list before removing item:22222222222", queueList);
-
                 let itemToRemove = null;
 
                 for (const item of queueList) {
                 const parsed = JSON.parse(item);
-                 console.log("Parsed queue item:ffffffffffffffffffffffffffff", parsed, "Comparing with roomId:", data);
-                if (parsed.roomId === data.roomId) {
-                  console.log("Found item to remove from queue33333333333333333:", parsed);
+                if (parsed.roomId === data.room_id) {
                 itemToRemove = item;
-                console.log("Item to remove from queue444444444:", itemToRemove);
                 break;
                 }
                 }
 
                 if (itemToRemove) {
-                  console.log("Item to remove from queue:ssssssssssss", itemToRemove);
                 const check = await pubClient.lRem(queueKey, 1, itemToRemove);
                 if (check) {
-                  console.log("Item removed from queue successfully");
                   await updateQueuePositions(queueKey, redisClient, pubClient);
                 }
                 }

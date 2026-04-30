@@ -442,9 +442,14 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     const queueList = await redis.lRange(queueKey, 0, -1);
 
     if (!queueList || queueList.length === 0) return;
-
-    let cumulativeWait = 0; // total wait time before current user
-
+    //----------------
+        let waitTime = 0;
+        for (let i = 0; i < queueList.length; i++) {
+        const user = JSON.parse(queueList[i]);
+        if (user.roomId === roomId) break;
+        waitTime += user.maximum_time;
+        }
+    //-------------------
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
@@ -452,8 +457,9 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
         const payload = {
           roomId: parsed.roomId,
           position: i,
-          waitTime: cumulativeWait, //
-          message: `Your position is ${i}. Estimated wait time ${cumulativeWait} mins`,
+          waitTime: waitTime, //
+          message: `Your position is ${i}. Estimated wait time ${waitTime} mins`,
+          active: i === 0 ? true : false,
         };
 
         await pubClient.publish("queue_update", JSON.stringify(payload));

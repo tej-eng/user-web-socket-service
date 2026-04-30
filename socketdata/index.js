@@ -5,7 +5,12 @@ import path from "path";
 import { log } from "console";
 //import { connectMongo } from "../config/mongo.js";
 import prisma from "../config/prisma.js";
-import { handleAcceptChat,finalizeChatSession,processNextChat ,handleRejectChat} from "../services/chatService.js";
+import {
+  handleAcceptChat,
+  finalizeChatSession,
+  processNextChat,
+  handleRejectChat,
+} from "../services/chatService.js";
 
 /* =========================
    Socket State
@@ -77,7 +82,7 @@ function safeEmit(ioOrSocket, event, payload) {
    Socket Handler
 ========================= */
 
-async function socketHandler(io, pubClient, subClient,redisClient) {
+async function socketHandler(io, pubClient, subClient, redisClient) {
   try {
     const channels = [
       "chat_status",
@@ -98,45 +103,53 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
           switch (ch) {
             case "chat_status":
               if (data.status === "Accepted") {
-                try{
+                try {
                   const result = await handleAcceptChat(
-                  data.roomid,
-                  prisma,
-                  redisClient ,
-                  pubClient
-                 );
-                 if(result){
-                io.emit("chatAcceptedByAstrologer", data);
-                 }
-                }catch(err){logEvent("ChatAcceptError", err.stack, true)}
-                
+                    data.roomid,
+                    prisma,
+                    redisClient,
+                    pubClient,
+                  );
+                  if (result) {
+                    io.emit("chatAcceptedByAstrologer", data);
+                  }
+                } catch (err) {
+                  logEvent("ChatAcceptError", err.stack, true);
+                }
               }
               if (data.status === "rejected") {
-               await handleRejectChat(data.roomid, prisma, redisClient,pubClient);
-               // io.emit("chat_rejected_astrologer", data);
+                await handleRejectChat(
+                  data.roomid,
+                  prisma,
+                  redisClient,
+                  pubClient,
+                );
+                // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
               }
               break;
 
             case "messages":
               if (data.sender === "Astrologer") {
-                try{
-                const formattedMessage = {
-                msg_id: data.msg_id || `${Date.now()}${Math.random()}`,
-                sender_id: data.sender_id,
-                room_id: data.room_id,
-                received_id: data.received_id,
-                message: data.message,
-                image: data.image || null,
-                sender: data.sender,
-                replyTo: data.replyTo || null,
-                time: data.time || Date.now(),
-                };
+                try {
+                  const formattedMessage = {
+                    msg_id: data.msg_id || `${Date.now()}${Math.random()}`,
+                    sender_id: data.sender_id,
+                    room_id: data.room_id,
+                    received_id: data.received_id,
+                    message: data.message,
+                    image: data.image || null,
+                    sender: data.sender,
+                    replyTo: data.replyTo || null,
+                    time: data.time || Date.now(),
+                  };
                   await redisClient.rPush(
-                  `chat_messages:${data.room_id}`,
-                  JSON.stringify(formattedMessage)
-               );
-                }catch(err){logEvent("MessageEmitError", err.stack, true)}
+                    `chat_messages:${data.room_id}`,
+                    JSON.stringify(formattedMessage),
+                  );
+                } catch (err) {
+                  logEvent("MessageEmitError", err.stack, true);
+                }
 
                 io.to(data.room_id).emit("receive_message", data);
               }
@@ -155,24 +168,26 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
 
             case "end_chat_by_astrologer":
               io.to(data.roomId).emit("leave_chat", data);
-              await finalizeChatSession(data.roomId, prisma, redisClient,data.astroId);
-              
-            setTimeout(async () => {
-              try {
-                 let queueKey = `chat_queue:${data.astroId}`;
-                const queueLength = await pubClient.lLen(queueKey);
-               if(queueLength > 0){
-                await processNextChat(
-                  data.astroId,
-                  redisClient,
-                  pubClient
-                );
-              }
-              } catch (err) {
-                console.error("Delayed processNextChat error:", err);
-              }
-            }, 8000);
-              
+              await finalizeChatSession(
+                data.roomId,
+                prisma,
+                redisClient,
+                data.astroId,
+              );
+              let queueKey = `chat_queue:${data.astroId}`;
+              await updateQueuePositions(queueKey, redisClient, pubClient);
+              setTimeout(async () => {
+                try {
+                  
+                  const queueLength = await pubClient.lLen(queueKey);
+                  if (queueLength > 0) {
+                    await processNextChat(data.astroId, redisClient, pubClient);
+                  }
+                } catch (err) {
+                  console.error("Delayed processNextChat error:", err);
+                }
+              }, 8000);
+
               break;
 
             case "astrologer_disconnected":
@@ -198,85 +213,95 @@ async function socketHandler(io, pubClient, subClient,redisClient) {
         });
       };
 
+      onSafe("chat_request", async (data) => {
+        try {
+          const astroId = data.astro_id;
+          const queueKey = `chat_queue:${astroId}`;
+          const roomId = data.room_id;
+          socket.join(String(roomId));
+          socket.roomId = String(roomId);
 
-  onSafe("chat_request", async (data) => {
-  try {
-    const astroId = data.astro_id;
-    const queueKey = `chat_queue:${astroId}`;
-    const roomId = data.room_id;
-    socket.join(String(roomId));
-    socket.roomId = String(roomId);
+          // Get current queue length
+          const queueLength = await pubClient.lLen(queueKey);
+          if (queueLength == 0) return;
 
-    // Get current queue length
-    const queueLength = await pubClient.lLen(queueKey);
-    if (queueLength == 0) return;
+          const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
+          //  If user is NOT first → send queue position
+          const queueList = await pubClient.lRange(queueKey, 0, -1);
+          let waitTime = 0;
+          // Sum max time of all users before current user
+          for (let i = 0; i < queueList.length; i++) {
+            console.log("Queue lengthhhhhhhhhhhhhhhhh:", queueList.length);
+            const user = JSON.parse(queueList[i]);
+            // stop when current user reached
+            if (user.roomId === roomId) break;
+            console.log(
+              "User in queue MAXTTTTTTTTTTTTTTIME:",
+              user.userName,
+              "Max time:",
+              user.maximum_time,
+            );
+            waitTime += user.maximum_time;
+          }
 
-    
-    const currentRoomId = await pubClient.get(`current_chat:${astroId}`);
-    //  If user is NOT first → send queue position
-    const queueList = await pubClient.lRange(queueKey, 0, -1);
-    let waitTime = 0;
-    // Sum max time of all users before current user
-  for (let i = 0; i < queueList.length; i++) {
-    console.log("Queue lengthhhhhhhhhhhhhhhhh:", queueList.length);
-  const user = JSON.parse(queueList[i]);
-  // stop when current user reached
-  if (user.roomId === roomId) break;
-  console.log("User in queue MAXTTTTTTTTTTTTTTIME:", user.userName, "Max time:", user.maximum_time);
-  waitTime += user.maximum_time;
-}
-    
-    if (queueLength > 5) {
-       socket.emit("queue_full", {
-        message: "Astrologer is busy. Please try another astrologer.",
-        status: "FULL"
+          if (queueLength > 5) {
+            socket.emit("queue_full", {
+              message: "Astrologer is busy. Please try another astrologer.",
+              status: "FULL",
+            });
+
+            return socket.emit("chat_rejected", {
+              message: "Astrologer is busy. Please try another astrologer.",
+              status: "FULL",
+            });
+          }
+          // If first user → send to astrologer
+          const exists = await pubClient.exists(`current_chat:${astroId}`);
+          console.log(
+            "Queue length:",
+            queueLength,
+            "Current chat exists:",
+            exists,
+          );
+
+          if (queueLength === 1 && !exists) {
+            await pubClient.set(
+              `first_chat_time:${astroId}`,
+              data.maximum_time,
+            );
+
+            safePublish(pubClient, "chat_requests", {
+              message: "Chat request sent successfully",
+              userName: sanitizeHtml(data.userName || ""),
+              gender: data.gender,
+              dateOfBirth: data.dateOfBirth,
+              timeOfBirth: data.timeOfBirth,
+              occupation: sanitizeHtml(data.occupation || ""),
+              location: sanitizeHtml(data.location || ""),
+              astro_id: astroId,
+              user_id: data.user_id,
+              room_id: roomId,
+              maximum_time: data.maximum_time,
+              user_image: data.user_image,
+            });
+          } else {
+            console.log(
+              `User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`,
+            );
+            const firstChatTime = await pubClient.get(
+              `first_chat_time:${astroId}`,
+            );
+            socket.emit("queue_position", {
+              message: `You are in queue`,
+              position: exists === 1 ? queueLength : queueLength - 1,
+              waitTime: exists === 1 ? firstChatTime * 60 : waitTime * 60,
+              active: exists === 1 ? true : false,
+            });
+          }
+        } catch (err) {
+          console.error("chat_request error:", err);
+        }
       });
-      
-      return socket.emit("chat_rejected", {
-        message: "Astrologer is busy. Please try another astrologer.",
-        status: "FULL"
-      });
-
-      
-    }
-   // If first user → send to astrologer
-   const exists = await pubClient.exists(`current_chat:${astroId}`);
-   console.log("Queue length:", queueLength, "Current chat exists:", exists);
-
-if (queueLength === 1  &&  !exists ) {
-  await pubClient.set(`first_chat_time:${astroId}`, data.maximum_time);
-
-  safePublish(pubClient, "chat_requests", {
-    message: "Chat request sent successfully",
-    userName: sanitizeHtml(data.userName || ""),
-    gender: data.gender,
-    dateOfBirth: data.dateOfBirth,
-    timeOfBirth: data.timeOfBirth,
-    occupation: sanitizeHtml(data.occupation || ""),
-    location: sanitizeHtml(data.location || ""),
-    astro_id: astroId,
-    user_id: data.user_id,
-    room_id: roomId,
-    maximum_time: data.maximum_time,
-    user_image: data.user_image,
-  });
-}
-
-else {
-   console.log(`User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`);
-  const firstChatTime = await pubClient.get(`first_chat_time:${astroId}`);
-  socket.emit("queue_position", {
-    message: `You are in queue`,
-    position: exists === 1 ? queueLength : queueLength-1,
-    waitTime:exists === 1 ? firstChatTime * 60 : waitTime * 60,
-    active: exists === 1 ? true : false,
-  });
-}
-
-  } catch (err) {
-    console.error("chat_request error:", err);
-  }
-});
 
       /* =========================
          Join Chat
@@ -292,150 +317,172 @@ else {
         });
       });
 
+      socket.on("send_message", async (data) => {
+        try {
+          const formattedMessage = {
+            msg_id: data.msg_id || `${Date.now()}${Math.random()}`,
+            sender_id: data.sender_id,
+            room_id: data.room_id,
+            received_id: data.received_id,
+            message: data.message,
+            image: data.image || null,
+            sender: data.sender,
+            replyTo: data.replyTo || null,
+            time: data.time || Date.now(),
+          };
 
-socket.on("send_message", async (data) => {
-  try {
-    const formattedMessage = {
-      msg_id: data.msg_id || `${Date.now()}${Math.random()}`, 
-      sender_id: data.sender_id,
-      room_id: data.room_id,
-      received_id: data.received_id,
-      message: data.message,
-      image: data.image || null,
-      sender: data.sender,
-      replyTo: data.replyTo || null,
-      time: data.time || Date.now(),
-    };
+          // store in redis
+          await redisClient.rPush(
+            `chat_messages:${data.room_id}`,
+            JSON.stringify(formattedMessage),
+          );
 
-    // store in redis
-    await redisClient.rPush(
-      `chat_messages:${data.room_id}`,
-      JSON.stringify(formattedMessage)
-    );
-
-    // publish
-    safePublish(pubClient, "messages", formattedMessage);
-
-  } catch (error) {
-    console.error("Error sending message:", error);
-  }
-});
+          // publish
+          safePublish(pubClient, "messages", formattedMessage);
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+      });
 
       /* =========================
          Chat Completed
       ========================= */
 
-   socket.on("chatCompleted", async (data) => {
-  try {
-    const roomId = data.room_id;
-   await finalizeChatSession(roomId, prisma, redisClient,data.astroId);
-        socket.emit("chatCompleted", {
-          message: `You have left the ${roomId} chat.`,
-          roomId: roomId,
-          status: "leave",
-        });
-        socket.leave(roomId);
+      socket.on("chatCompleted", async (data) => {
+        try {
+          const roomId = data.room_id;
+          await finalizeChatSession(roomId, prisma, redisClient, data.astroId);
 
-        pubClient.publish("end_chat_by_user", JSON.stringify({
-          message: `User has left the ${roomId} chat.`,
-          roomId: roomId,
-          status: "leave",
-          }));
+          socket.emit("chatCompleted", {
+            message: `You have left the ${roomId} chat.`,
+            roomId: roomId,
+            status: "leave",
+          });
+          socket.leave(roomId);
+
+          pubClient.publish(
+            "end_chat_by_user",
+            JSON.stringify({
+              message: `User has left the ${roomId} chat.`,
+              roomId: roomId,
+              status: "leave",
+            }),
+          );
           let astroId = data.astroId;
-          const currentRoom = await pubClient.get(`current_chat:${data.astroId}`);
+          const currentRoom = await pubClient.get(
+            `current_chat:${data.astroId}`,
+          );
           if (currentRoom) {
-          await pubClient.del(`current_chat:${astroId}`);
+            await pubClient.del(`current_chat:${astroId}`);
           }
-         let queueKey = `chat_queue:${astroId}`;
-        let queueLength = await pubClient.lLen(queueKey);
-         if (queueLength > 0) {
-      setTimeout(async () => {
-        await processNextChat(
-          astroId,
-          redisClient,
-          pubClient
-        );
-      }, 5000); 
-    }
-     
-
-  } catch (error) {
-    console.error("chat complete error", error);
-  }
-});
+          let queueKey = `chat_queue:${astroId}`;
+           await updateQueuePositions(queueKey, redisClient, pubClient);
+          let queueLength = await pubClient.lLen(queueKey);
+          if (queueLength > 0) {
+            setTimeout(async () => {
+              await processNextChat(astroId, redisClient, pubClient);
+            }, 5000);
+          }
+        } catch (error) {
+          console.error("chat complete error", error);
+        }
+      });
 
       onSafe("cancel_chat_request", async (data) => {
-       await handleRejectChat(data.room_id, prisma, redisClient,pubClient);
-                io.emit("chat_rejected", data);
-                
-        safePublish(pubClient, "chat_cancel_by_user", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id ,message:"User has cancelled the chat request"});
+        await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
+        io.emit("chat_rejected", data);
+
+        safePublish(pubClient, "chat_cancel_by_user", {
+          roomId: data.room_id,
+          astroid: data.astroid,
+          user_id: data.user_id,
+          message: "User has cancelled the chat request",
+        });
       });
 
       onSafe("queue_cancel", async (data) => {
-       await handleRejectChat(data.room_id, prisma, redisClient,pubClient);
-                io.emit("chat_rejected", data);
-        safePublish(pubClient, "chat_cancel_by_user", { roomId: data.room_id,astroid:data.astroid,user_id:data.user_id ,message:"User has cancelled the chat request from queue"});
+        await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
+        io.emit("chat_rejected", data);
+        safePublish(pubClient, "chat_cancel_by_user", {
+          roomId: data.room_id,
+          astroid: data.astroid,
+          user_id: data.user_id,
+          message: "User has cancelled the chat request from queue",
+        });
       });
 
       onSafe("autodisconnect", async (data) => {
-      const roomId = String(data.room_id);
-      const astroId = String(data.astroid);
-      await handleRejectChat(roomId, prisma, redisClient,pubClient);
+        const roomId = String(data.room_id);
+        const astroId = String(data.astroid);
+        await handleRejectChat(roomId, prisma, redisClient, pubClient);
 
-      try {
-        if (roomId) {
-          socket.broadcast.emit("chat_reject_auto", {
-            message: `${roomId} has been automatically rejected after 1 minute.`,
-            roomId: roomId,
-            status: "reject",
-          });
-          socket.leave(roomId);
+        try {
+          if (roomId) {
+            socket.broadcast.emit("chat_reject_auto", {
+              message: `${roomId} has been automatically rejected after 1 minute.`,
+              roomId: roomId,
+              status: "reject",
+            });
+            socket.leave(roomId);
             safePublish(pubClient, "chat_reject_auto", {
-            message: `${roomId} has been automatically rejected after 1 minute.`,
-            roomId: roomId,
-            status: "reject",
-          });
-        } else {
-          console.log("Chat accepted or not enough time has passed.");
+              message: `${roomId} has been automatically rejected after 1 minute.`,
+              roomId: roomId,
+              status: "reject",
+            });
+          } else {
+            console.log("Chat accepted or not enough time has passed.");
+          }
+        } catch (error) {
+          console.error("Auto-disconnect error:", error);
         }
-      } catch (error) {
-        console.error("Auto-disconnect error:", error);
-      }
-    });
+      });
 
-     onSafe("customer_recharge", (data) => {
-        socket.to(data.room_id).emit("open_popup_astrologer", { roomId: data.room_id });
+      onSafe("customer_recharge", (data) => {
+        socket
+          .to(data.room_id)
+          .emit("open_popup_astrologer", { roomId: data.room_id });
         safePublish(pubClient, "customer_recharge", { roomId: data.room_id });
       });
 
       onSafe("customer_recharge_completed", (data) => {
-        socket.to(data.room_id).emit("customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
-        safePublish(pubClient, "customer_recharge_completed", { roomId: data.room_id, duetime: data.due_time });
+        socket
+          .to(data.room_id)
+          .emit("customer_recharge_completed", {
+            roomId: data.room_id,
+            duetime: data.due_time,
+          });
+        safePublish(pubClient, "customer_recharge_completed", {
+          roomId: data.room_id,
+          duetime: data.due_time,
+        });
       });
 
       onSafe("customer_recharge_fail", (data) => {
-        socket.to(data.room_id).emit("customer_recharge_fail", { roomId: data.room_id });
-        safePublish(pubClient, "customer_recharge_fail", { roomId: data.room_id });
+        socket
+          .to(data.room_id)
+          .emit("customer_recharge_fail", { roomId: data.room_id });
+        safePublish(pubClient, "customer_recharge_fail", {
+          roomId: data.room_id,
+        });
       });
       /* =========================
          Typing
       ========================= */
 
       onSafe("typing", (data) => {
-         console.log("Typing event receivedjjjjjjjjjj:", data);  
+        console.log("Typing event receivedjjjjjjjjjj:", data);
         socket.to(data.room_id).emit("typing", {
           typing: data.typing,
           user_name: data.user_name,
           roomid: data.room_id,
         });
-          console.log("Typing event receivedHHHHHHHHHHHHHHHHHHHHHHHHHHHH:", data);  
+        console.log("Typing event receivedHHHHHHHHHHHHHHHHHHHHHHHHHHHH:", data);
         safePublish(pubClient, "user_typing", {
           typing: data.typing,
           user_name: data.user_name,
           roomid: data.room_id,
         });
       });
-
     });
   } catch (err) {
     logEvent("socketHandlerCritical", err.stack, true);

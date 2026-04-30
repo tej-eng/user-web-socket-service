@@ -366,7 +366,7 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     // Update queue positions (optional but useful)
     //const queueKey = await redis.lRange(queueKey, 0, -1);
     //-------------------------------------------------------
-    await updateQueuePositions(queueKey, redis, pubClient);
+    //await updateQueuePositions(queueKey, redis, pubClient);
     //-------------------------------------------------------
 
     // queue.forEach((userData, index) => {

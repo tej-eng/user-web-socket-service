@@ -444,21 +444,23 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     if (!queueList || queueList.length === 0) return;
     //----------------
         let waitTime = 0;
-        for (let i = 0; i < queueList.length; i++) {
-        const user = JSON.parse(queueList[i]);
-        console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:",user);
-        if (user.roomId === roomId) break;
-        waitTime += user.maximum_time;
-        }
+        // for (let i = 0; i < queueList.length; i++) {
+        // const user = JSON.parse(queueList[i]);
+        // console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:",user);
+        // if (user.roomId === roomId) break;
+        // waitTime += user.maximum_time;
+        // }
     //-------------------
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
+          waitTime += parsed.maximum_time;
+          console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:", parsed, "cumulativeWait", waitTime, "position", i);
 
         const payload = {
           roomId: parsed.roomId,
           position: i,
-          waitTime: waitTime, //
+          waitTime: i === 0 ? 0 : waitTime,
           message: `Your position is ${i}. Estimated wait time ${waitTime} mins`,
           active: i === 0 ? true : false,
         };

@@ -175,7 +175,27 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 redisClient,
                 data.astroId,
               );
-              let queueKey = `chat_queue:${data.astroId}`;
+
+              //------DELETE KEY AFTER ASTRLOGER CHAT END--------
+                let queueKey = `chat_queue:${data.astroId}`;
+                const queueList = await redis.lRange(queueKey, 0, -1);
+
+                let itemToRemove = null;
+
+                for (const item of queueList) {
+                const parsed = JSON.parse(item);
+
+                if (parsed.roomId === data.roomId) {
+                itemToRemove = item;
+                break;
+                }
+                }
+
+                if (itemToRemove) {
+                await redis.lRem(queueKey, 1, itemToRemove);
+                }
+              //-------END CODE FOR DELETE KEY AFTER ASTRLOGER CHAT END-------
+              
               await updateQueuePositions(queueKey, redisClient, pubClient);
               setTimeout(async () => {
                 try {
@@ -376,7 +396,25 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           if (currentRoom) {
             await pubClient.del(`current_chat:${astroId}`);
           }
-          let queueKey = `chat_queue:${astroId}`;
+              //------DELETE KEY AFTER USER CHAT END--------
+                let queueKey = `chat_queue:${data.astroId}`;
+                const queueList = await redis.lRange(queueKey, 0, -1);
+
+                let itemToRemove = null;
+
+                for (const item of queueList) {
+                const parsed = JSON.parse(item);
+
+                if (parsed.roomId === data.roomId) {
+                itemToRemove = item;
+                break;
+                }
+                }
+
+                if (itemToRemove) {
+                await redis.lRem(queueKey, 1, itemToRemove);
+                }
+              //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
            await updateQueuePositions(queueKey, redisClient, pubClient);
           let queueLength = await pubClient.lLen(queueKey);
           if (queueLength > 0) {

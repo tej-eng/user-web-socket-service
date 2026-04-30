@@ -308,22 +308,22 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     const isActive = await redis.exists(`active_chat:${nextRoomId}`);
     if (isActive) {
       // OPTIONAL: remove it from queue (cleanup)
-      const queueList = await redis.lRange(queueKey, 0, -1);
+      // const queueList = await redis.lRange(queueKey, 0, -1);
 
-      let itemToRemove = null;
+      // let itemToRemove = null;
 
-      for (const item of queueList) {
-        const parsed = JSON.parse(item);
+      // for (const item of queueList) {
+      //   const parsed = JSON.parse(item);
 
-        if (parsed.roomId === nextRoomId) {
-          itemToRemove = item;
-          break;
-        }
-      }
+      //   if (parsed.roomId === nextRoomId) {
+      //     itemToRemove = item;
+      //     break;
+      //   }
+      // }
 
-      if (itemToRemove) {
-        await redis.lRem(queueKey, 1, itemToRemove);
-      }
+      // if (itemToRemove) {
+      //   await redis.lRem(queueKey, 1, itemToRemove);
+      // }
 
       // Try next user recursively
       return await processNextChat(astrologerId, redis, pubClient);

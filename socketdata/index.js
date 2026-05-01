@@ -387,11 +387,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
               //------DELETE KEY AFTER USER CHAT END--------
                 let queueKey = `chat_queue:${data.astroId}`;
+                console.log("Queue key to remove item from after user ended chat:AAAAAAAAAAAAAAA", queueKey);
                 const queueList = await pubClient.lRange(queueKey, 0, -1);
                 let itemToRemove = null;
 
                 for (const item of queueList) {
                 const parsed = JSON.parse(item);
+                console.log("Checking queue item for removal after user ended chat:BBBBBBBBBBB", parsed,parsed.roomId," === ",data.room_id);
                 if (parsed.roomId === data.room_id) {
                 itemToRemove = item;
                 break;
@@ -399,10 +401,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
 
                 if (itemToRemove) {
+                  console.log("Item to remove from queue after user ended chat:CCCCCCCCCCCCCC:", itemToRemove);
                 const check = await pubClient.lRem(queueKey, 1, itemToRemove);
                 if (check) {
+                  console.log("Item removed from queue successfully after user ended chatDDDDDDDDDDD");
                   const res=await updateQueuePositions(queueKey, redisClient, pubClient);
                   if(res){
+                    console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
                     let queueLength = await pubClient.lLen(queueKey);
                     if (queueLength > 0) {
                     setTimeout(async () => {

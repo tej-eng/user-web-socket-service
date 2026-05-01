@@ -403,7 +403,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 if (itemToRemove) {
                   console.log("Item to remove from queue after user ended chat:CCCCCCCCCCCCCC:", itemToRemove);
                 const check = await pubClient.lRem(queueKey, 1, itemToRemove);
-                if (check) {
+                
+                }
+                
                   console.log("Item removed from queue successfully after user ended chatDDDDDDDDDDD");
                   const res=await updateQueuePositions(queueKey, redisClient, pubClient);
                   if(res){
@@ -415,8 +417,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                     }, 5000);
                     }
                   }
-                }
-                }
+                
               //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
            
           

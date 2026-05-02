@@ -164,7 +164,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":
+              console.log("Queue update received in socket handler:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuu", data);
               io.to(data.roomId).emit("queue_position", data);
+              console.log("Queue update emitted to clients:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuuAFTER", data.roomId); 
               break;
 
             case "end_chat_by_astrologer":

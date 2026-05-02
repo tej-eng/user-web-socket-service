@@ -279,6 +279,8 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
       await redis.del(`chat_request_data:${nextRoomId}`);
     } else {
       console.warn(`No chat request data found for room ${nextRoomId}`);
+      await redis.lPop(queueKey);
+      return;
       //return await processNextChat(astrologerId, redis, pubClient);
     }
 

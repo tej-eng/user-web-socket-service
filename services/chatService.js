@@ -360,6 +360,7 @@ export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
     console.error("handleRejectChat error:", error);
     throw error;
   }
+  
 };
 export const updateQueuePositions = async (queueKey, redis, pubClient) => {
   try {

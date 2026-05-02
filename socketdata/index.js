@@ -164,9 +164,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":
-              console.log("Emitting queue position update to roomDDDDDDDDDDDDDD:", data.roomId, "position:", data.position, "waitTime:", data.waitTime);
               io.to(data.roomId).emit("queue_position", data);
-              console.log("Emitted AFTER queue position update to roomDDDDDDDDDDDDDD:", data.roomId);
               break;
 
             case "end_chat_by_astrologer":
@@ -225,6 +223,17 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
             case "astrologer_disconnected":
               io.to(data.roomId).emit("user_disconnected", data);
+              const res = await handleRejectChat(data.roomId, prisma, redisClient, pubClient);
+                if(res){
+                    console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+                    let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+                    if (queueLength > 0) {
+                    setTimeout(async () => {
+                    await processNextChat(astroId, redisClient, pubClient);
+                    }, 5000);
+                    }
+                  }
+              //handelRejectChat(data.roomId, prisma, redisClient, pubClient);
               break;
           }
         } catch (err) {
@@ -427,7 +436,16 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_chat_request", async (data) => {
-        await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
+        const res = await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
+        if(res){
+            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+            if (queueLength > 0) {
+            setTimeout(async () => {
+            await processNextChat(astroId, redisClient, pubClient);
+            }, 5000);
+            }
+          }
         io.emit("chat_rejected", data);
 
         safePublish(pubClient, "chat_cancel_by_user", {
@@ -439,7 +457,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("queue_cancel", async (data) => {
-        await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
         io.emit("chat_rejected", data);
         safePublish(pubClient, "chat_cancel_by_user", {
           roomId: data.room_id,
@@ -447,12 +464,31 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           user_id: data.user_id,
           message: "User has cancelled the chat request from queue",
         });
+        const res = await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
+    if(res){
+            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+            if (queueLength > 0) {
+            setTimeout(async () => {
+            await processNextChat(astroId, redisClient, pubClient);
+            }, 5000);
+            }
+          }
       });
 
       onSafe("autodisconnect", async (data) => {
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);
-        await handleRejectChat(roomId, prisma, redisClient, pubClient);
+        const res = await handleRejectChat(roomId, prisma, redisClient, pubClient);
+         if(res){
+            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+            if (queueLength > 0) {
+            setTimeout(async () => {
+            await processNextChat(astroId, redisClient, pubClient);
+            }, 5000);
+            }
+          }
 
         try {
           if (roomId) {

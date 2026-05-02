@@ -229,7 +229,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                     let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
                     if (queueLength > 0) {
                     setTimeout(async () => {
-                    await processNextChat(astroId, redisClient, pubClient);
+                    await processNextChat(data.astroid, redisClient, pubClient);
                     }, 5000);
                     }
                   }
@@ -442,7 +442,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
             if (queueLength > 0) {
             setTimeout(async () => {
-            await processNextChat(astroId, redisClient, pubClient);
+            await processNextChat(data.astroid, redisClient, pubClient);
             }, 5000);
             }
           }
@@ -470,7 +470,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
             if (queueLength > 0) {
             setTimeout(async () => {
-            await processNextChat(astroId, redisClient, pubClient);
+            await processNextChat(data.astroid, redisClient, pubClient);
             }, 5000);
             }
           }
@@ -485,7 +485,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
             if (queueLength > 0) {
             setTimeout(async () => {
-            await processNextChat(astroId, redisClient, pubClient);
+            await processNextChat(data.astroid, redisClient, pubClient);
             }, 5000);
             }
           }

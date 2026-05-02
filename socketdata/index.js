@@ -481,17 +481,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       onSafe("autodisconnect", async (data) => {
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);
-        const res = await handleRejectChat(roomId, prisma, redisClient, pubClient);
-         if(res){
-            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
-            if (queueLength > 0) {
-            setTimeout(async () => {
-            await processNextChat(data.astroid, redisClient, pubClient);
-            }, 5000);
-            }
-          }
-
         try {
           if (roomId) {
             socket.broadcast.emit("chat_reject_auto", {
@@ -505,6 +494,19 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               roomId: roomId,
               status: "reject",
             });
+
+            const res = await handleRejectChat(roomId, prisma, redisClient, pubClient);
+         if(res){
+            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+            if (queueLength > 0) {
+            setTimeout(async () => {
+            await processNextChat(data.astroid, redisClient, pubClient);
+            }, 5000);
+            }
+          }
+
+
           } else {
             console.log("Chat accepted or not enough time has passed.");
           }

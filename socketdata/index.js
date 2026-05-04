@@ -249,7 +249,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
 
              case "callAcceptedByAtrologer":
-              let parsed = message;
+              let parsed = data;
 
               try {
               parsed = JSON.parse(parsed);

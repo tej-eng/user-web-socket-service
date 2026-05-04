@@ -337,6 +337,44 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           roomid: String(data.room_id),
         });
       });
+  onSafe("rejoin_queue", async (data) => {
+  const roomId = String(data.room_id);
+
+  socket.join(roomId);
+  socket.roomId = roomId;
+
+  console.log("User rejoined room after refresh:", roomId);
+
+  // OPTIONAL: send latest queue position immediately
+  try {
+    // const queueKey = `chat_queue:${data.astro_id}`;
+    // const queueList = await redisClient.lRange(queueKey, 0, -1);
+
+    // let position = -1;
+    // let waitTime = 0;
+
+    // for (let i = 0; i < queueList.length; i++) {
+    //   const user = JSON.parse(queueList[i]);
+
+    //   if (user.roomId === roomId) {
+    //     position = i;
+    //     break;
+    //   }
+
+    //   waitTime += user.maximum_time;
+    // }
+
+    // socket.emit("queue_position", {
+    //   roomId,
+    //   position,
+    //   waitTime: waitTime * 60,
+    //   message: "Restored queue position after refresh"
+    // });
+
+  } catch (err) {
+    console.error("Rejoin queue error:", err);
+  }
+});
 
       socket.on("send_message", async (data) => {
         try {

@@ -11,7 +11,14 @@ import {
   processNextChat,
   handleRejectChat,
   updateQueuePositions,
+
 } from "../services/chatService.js";
+import {
+  handleAcceptCall,
+  finalizeCallSession,
+  processNextCall,
+  handleRejectCall,
+} from "../services/callService.js"
 
 /* =========================
    Socket State
@@ -29,9 +36,8 @@ async function logEvent(event, data, isError = false) {
   const ts = DateTime.now().toFormat("yyyy-MM-dd HH:mm:ss");
   const logFn = isError ? console.error : console.log;
 
-  const logMessage = `[${ts}] [${event}] ${
-    typeof data === "object" ? JSON.stringify(data) : data
-  }\n`;
+  const logMessage = `[${ts}] [${event}] ${typeof data === "object" ? JSON.stringify(data) : data
+    }\n`;
 
   logFn(`[${ts}] [${event}]`, data);
 
@@ -93,6 +99,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       "end_chat_by_astrologer",
       "astrologer_disconnected",
       "queue_update",
+      "callAcceptedByAtrologer",
+      "answer",
     ];
 
     for (const channel of channels) {
@@ -166,7 +174,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             case "queue_update":
               console.log("Queue update received in socket handler:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuu", data);
               io.to(data.roomId).emit("queue_position", data);
-              console.log("Queue update emitted to clients:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuuAFTER", data.roomId); 
+              console.log("Queue update emitted to clients:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuuAFTER", data.roomId);
               break;
 
             case "end_chat_by_astrologer":
@@ -179,64 +187,73 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               );
 
               //------DELETE KEY AFTER ASTRLOGER CHAT END--------
-                let queueKey = `chat_queue:${data.astroId}`;
-                const queueList = await redisClient.lRange(queueKey, 0, -1);
-                console.log("Queue list before removing item:", queueList);
+              let queueKey = `chat_queue:${data.astroId}`;
+              const queueList = await redisClient.lRange(queueKey, 0, -1);
+              console.log("Queue list before removing item:", queueList);
 
-                let itemToRemove = null;
+              let itemToRemove = null;
 
-                for (const item of queueList) {
+              for (const item of queueList) {
                 const parsed = JSON.parse(item);
 
                 if (parsed.roomId === data.roomId) {
-                itemToRemove = item;
-                break;
+                  itemToRemove = item;
+                  break;
                 }
-                }
+              }
 
-                if (itemToRemove) {
-                  console.log("Item to remove from queueccccccccc:", itemToRemove);
-                const check =await redisClient.lRem(queueKey, 1, itemToRemove);
-                if(check){
+              if (itemToRemove) {
+                console.log("Item to remove from queueccccccccc:", itemToRemove);
+                const check = await redisClient.lRem(queueKey, 1, itemToRemove);
+                if (check) {
                   console.log("Item removed from queue successfully after astrologer ended chat");
-                 const res = await updateQueuePositions(queueKey, redisClient, pubClient);
-                 if(res){
+                  const res = await updateQueuePositions(queueKey, redisClient, pubClient);
+                  if (res) {
                     setTimeout(async () => {
-                try {
-                  
-                  const queueLength = await pubClient.lLen(queueKey);
-                  if (queueLength > 0) {
-                    await processNextChat(data.astroId, redisClient, pubClient);
-                  }
-                } catch (err) {
-                  console.error("Delayed processNextChat errorAAAAAAAAA:", err);
-                }
-              }, 8000);
+                      try {
 
-                 }
+                        const queueLength = await pubClient.lLen(queueKey);
+                        if (queueLength > 0) {
+                          await processNextChat(data.astroId, redisClient, pubClient);
+                        }
+                      } catch (err) {
+                        console.error("Delayed processNextChat errorAAAAAAAAA:", err);
+                      }
+                    }, 8000);
+
+                  }
                 }
-                }
+              }
               //-------END CODE FOR DELETE KEY AFTER ASTRLOGER CHAT END-------
-              
-              
-            
+
+
+
 
               break;
 
             case "astrologer_disconnected":
               io.to(data.roomId).emit("user_disconnected", data);
               const res = await handleRejectChat(data.roomId, prisma, redisClient, pubClient);
-                if(res){
-                    console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-                    let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
-                    if (queueLength > 0) {
-                    setTimeout(async () => {
+              if (res) {
+                console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+                let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+                if (queueLength > 0) {
+                  setTimeout(async () => {
                     await processNextChat(data.astroid, redisClient, pubClient);
-                    }, 5000);
-                    }
-                  }
+                  }, 5000);
+                }
+              }
               //handelRejectChat(data.roomId, prisma, redisClient, pubClient);
               break;
+
+
+             case "callAcceptedByAtrologer":
+              io.to(data.roomId).emit("callAcceptedByAtrologer", JSON.parse(data));
+              break;
+            case "answer":
+              io.to(data.roomId).emit("answer", JSON.parse(data));
+              break;
+
           }
         } catch (err) {
           logEvent(`RedisHandlerError:${ch}`, err.stack, true);
@@ -281,7 +298,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             waitTime += user.maximum_time;
           }
 
-          if (queueLength === 1 ) {
+          if (queueLength === 1) {
             safePublish(pubClient, "chat_requests", {
               message: "Chat request sent successfully",
               userName: sanitizeHtml(data.userName || ""),
@@ -300,7 +317,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             console.log(
               `User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`,
             );
-            
+
             socket.emit("queue_position", {
               message: `You are in queue`,
               position: queueLength - 1,
@@ -310,6 +327,67 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         } catch (err) {
           console.error("chat_request error:", err);
         }
+      });
+
+      onSafe("call_request", async (data) => {
+        try {
+          const astroId = data.astro_id;
+          const queueKey = `call_queue:${astroId}`;
+          const roomId = data.room_id;
+          socket.join(String(roomId));
+          socket.roomId = String(roomId);
+
+          // Get current queue length
+          const queueLength = await pubClient.lLen(queueKey);
+          if (queueLength == 0) return;
+
+          //  If user is NOT first → send queue position
+          const queueList = await pubClient.lRange(queueKey, 0, -1);
+          let waitTime = 0;
+          // Sum max time of all users before current user
+          for (let i = 0; i < queueList.length; i++) {
+            const user = JSON.parse(queueList[i]);
+            // stop when current user reached
+            if (user.roomId === roomId) break;
+            waitTime += user.maximum_time;
+          }
+
+          if (queueLength === 1) {
+            await redis.set(`active_call:${astroId}`, roomId);
+            pubClient.publish("call_start", JSON.stringify({
+              roomId,
+              astroId
+            }));
+          } else {
+            socket.emit("call_queue_position", {
+              message: `You are in queue`,
+              position: queueLength - 1,
+              waitTime: waitTime * 60,
+            });
+          }
+        } catch (err) {
+          console.error("call_request error:", err);
+        }
+      });
+
+      onSafe("offer", ({ room_id, offer }) => {
+        safePublish(pubClient, "offer", {
+          room_id: room_id,
+          offer: offer,
+        });
+      });
+
+      onSafe("ice-candidate", ({ room_id, candidate }) => {
+        socket.to(room_id).emit("ice-candidate", { candidate });
+      });
+
+      onSafe("call_ended_by_user", ({ room_id }) => {
+        safePublish(pubClient, "call_ended_by_user", {
+          room_id: room_id,
+
+        });
+
+        logEvent("CallEnded", room_id);
       });
 
       /* =========================
@@ -325,44 +403,44 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           roomid: String(data.room_id),
         });
       });
-  onSafe("rejoin_queue", async (data) => {
-  const roomId = String(data.room_id);
+      onSafe("rejoin_queue", async (data) => {
+        const roomId = String(data.room_id);
 
-  socket.join(roomId);
-  socket.roomId = roomId;
+        socket.join(roomId);
+        socket.roomId = roomId;
 
-  console.log("User rejoined room after refresh:", roomId);
+        console.log("User rejoined room after refresh:", roomId);
 
-  // OPTIONAL: send latest queue position immediately
-  try {
-    // const queueKey = `chat_queue:${data.astro_id}`;
-    // const queueList = await redisClient.lRange(queueKey, 0, -1);
+        // OPTIONAL: send latest queue position immediately
+        try {
+          // const queueKey = `chat_queue:${data.astro_id}`;
+          // const queueList = await redisClient.lRange(queueKey, 0, -1);
 
-    // let position = -1;
-    // let waitTime = 0;
+          // let position = -1;
+          // let waitTime = 0;
 
-    // for (let i = 0; i < queueList.length; i++) {
-    //   const user = JSON.parse(queueList[i]);
+          // for (let i = 0; i < queueList.length; i++) {
+          //   const user = JSON.parse(queueList[i]);
 
-    //   if (user.roomId === roomId) {
-    //     position = i;
-    //     break;
-    //   }
+          //   if (user.roomId === roomId) {
+          //     position = i;
+          //     break;
+          //   }
 
-    //   waitTime += user.maximum_time;
-    // }
+          //   waitTime += user.maximum_time;
+          // }
 
-    // socket.emit("queue_position", {
-    //   roomId,
-    //   position,
-    //   waitTime: waitTime * 60,
-    //   message: "Restored queue position after refresh"
-    // });
+          // socket.emit("queue_position", {
+          //   roomId,
+          //   position,
+          //   waitTime: waitTime * 60,
+          //   message: "Restored queue position after refresh"
+          // });
 
-  } catch (err) {
-    console.error("Rejoin queue error:", err);
-  }
-});
+        } catch (err) {
+          console.error("Rejoin queue error:", err);
+        }
+      });
 
       socket.on("send_message", async (data) => {
         try {
@@ -422,42 +500,42 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           if (currentRoom) {
             await pubClient.del(`current_chat:${astroId}`);
           }
-              //------DELETE KEY AFTER USER CHAT END--------
-                let queueKey = `chat_queue:${data.astroId}`;
-                console.log("Queue key to remove item from after user ended chat:AAAAAAAAAAAAAAA", queueKey);
-                const queueList = await pubClient.lRange(queueKey, 0, -1);
-                let itemToRemove = null;
+          //------DELETE KEY AFTER USER CHAT END--------
+          let queueKey = `chat_queue:${data.astroId}`;
+          console.log("Queue key to remove item from after user ended chat:AAAAAAAAAAAAAAA", queueKey);
+          const queueList = await pubClient.lRange(queueKey, 0, -1);
+          let itemToRemove = null;
 
-                for (const item of queueList) {
-                const parsed = JSON.parse(item);
-                console.log("Checking queue item for removal after user ended chat:BBBBBBBBBBB", parsed,parsed.roomId," === ",data.room_id);
-                if (parsed.roomId === data.room_id) {
-                itemToRemove = item;
-                break;
-                }
-                }
+          for (const item of queueList) {
+            const parsed = JSON.parse(item);
+            console.log("Checking queue item for removal after user ended chat:BBBBBBBBBBB", parsed, parsed.roomId, " === ", data.room_id);
+            if (parsed.roomId === data.room_id) {
+              itemToRemove = item;
+              break;
+            }
+          }
 
-                if (itemToRemove) {
-                  console.log("Item to remove from queue after user ended chat:CCCCCCCCCCCCCC:", itemToRemove);
-                const check = await pubClient.lRem(queueKey, 1, itemToRemove);
-                
-                }
-                
-                  console.log("Item removed from queue successfully after user ended chatDDDDDDDDDDD");
-                  const res=await updateQueuePositions(queueKey, redisClient, pubClient);
-                  if(res){
-                    console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-                    let queueLength = await pubClient.lLen(queueKey);
-                    if (queueLength > 0) {
-                    setTimeout(async () => {
-                    await processNextChat(astroId, redisClient, pubClient);
-                    }, 5000);
-                    }
-                  }
-                
-              //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
-           
-          
+          if (itemToRemove) {
+            console.log("Item to remove from queue after user ended chat:CCCCCCCCCCCCCC:", itemToRemove);
+            const check = await pubClient.lRem(queueKey, 1, itemToRemove);
+
+          }
+
+          console.log("Item removed from queue successfully after user ended chatDDDDDDDDDDD");
+          const res = await updateQueuePositions(queueKey, redisClient, pubClient);
+          if (res) {
+            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+            let queueLength = await pubClient.lLen(queueKey);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextChat(astroId, redisClient, pubClient);
+              }, 5000);
+            }
+          }
+
+          //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
+
+
         } catch (error) {
           console.error("chat complete error", error);
         }
@@ -465,15 +543,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("cancel_chat_request", async (data) => {
         const res = await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
-        if(res){
-            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
-            if (queueLength > 0) {
+        if (res) {
+          console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+          let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+          if (queueLength > 0) {
             setTimeout(async () => {
-            await processNextChat(data.astroid, redisClient, pubClient);
+              await processNextChat(data.astroid, redisClient, pubClient);
             }, 5000);
-            }
           }
+        }
         io.emit("chat_rejected", data);
 
         safePublish(pubClient, "chat_cancel_by_user", {
@@ -493,15 +571,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           message: "User has cancelled the chat request from queue",
         });
         const res = await handleRejectChat(data.room_id, prisma, redisClient, pubClient);
-    if(res){
-            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
-            if (queueLength > 0) {
+        if (res) {
+          console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+          let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+          if (queueLength > 0) {
             setTimeout(async () => {
-            await processNextChat(data.astroid, redisClient, pubClient);
+              await processNextChat(data.astroid, redisClient, pubClient);
             }, 5000);
-            }
           }
+        }
       });
 
       onSafe("autodisconnect", async (data) => {
@@ -522,15 +600,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             });
 
             const res = await handleRejectChat(roomId, prisma, redisClient, pubClient);
-         if(res){
-            console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
-            let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
-            if (queueLength > 0) {
-            setTimeout(async () => {
-            await processNextChat(data.astroid, redisClient, pubClient);
-            }, 5000);
+            if (res) {
+              console.log("Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE");
+              let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+              if (queueLength > 0) {
+                setTimeout(async () => {
+                  await processNextChat(data.astroid, redisClient, pubClient);
+                }, 5000);
+              }
             }
-          }
 
 
           } else {

@@ -250,8 +250,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
              case "callAcceptedByAtrologer":
               console.log("Call accepted by astrologer event received in socket handler:callAcceptedByAtrologer", data);
-              console.log("Emitting call accepted by astrologer event to clients:callAcceptedByAtrologer", data.room_id);
-               io.to(data.room_id).emit("callAcceptedByAtrologer", data);
+              console.log("Emitting call accepted by astrologer event to clients:callAcceptedByAtrologer", data.roomId);
+               io.to(data.roomId).emit("callAcceptedByAtrologer", data);
               break;
             case "answer":
               io.to(data.room_id).emit("answer", data);

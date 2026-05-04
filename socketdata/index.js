@@ -249,13 +249,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
 
              case "callAcceptedByAtrologer":
+              console.log("Received callAcceptedByAtrologer message:", data);
               let parsed = data;
-
+              console.log("Received callAcceptedByAtrologer data:", parsed);  
               try {
               parsed = JSON.parse(parsed);
-
+               
               //  handle double stringify
               if (typeof parsed === "string") {
+                console.log("Data was double stringified, parsing again:", parsed);
               parsed = JSON.parse(parsed);
               }
 

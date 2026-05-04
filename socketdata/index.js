@@ -358,7 +358,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
 
           if (queueLength === 1) {
-            await redis.pubClient(`active_call:${astroId}`, roomId);
+           await redisClient.set(`active_call:${astroId}`, roomId);
           pubClient.publish("call_start", JSON.stringify({
           room_id: roomId,
           callerId: data.user_id,

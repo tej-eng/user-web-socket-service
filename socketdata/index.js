@@ -101,6 +101,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       "queue_update",
       "callAcceptedByAtrologer",
       "answer",
+      "call_ended_by_astrologer",
     ];
 
     for (const channel of channels) {
@@ -248,11 +249,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
 
              case "callAcceptedByAtrologer":
-              io.to(data.roomId).emit("callAcceptedByAtrologer", JSON.parse(data));
+               io.to(data.room_id).emit("callAcceptedByAtrologer", data);
               break;
             case "answer":
-              io.to(data.roomId).emit("answer", JSON.parse(data));
+              io.to(data.room_id).emit("answer", data);
               break;
+              case "call_ended_by_astrologer":
+              io.to(data.room_id).emit("call_ended_by_astrologer", data);
+              break;
+             
 
           }
         } catch (err) {
@@ -354,10 +359,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
           if (queueLength === 1) {
             await redis.set(`active_call:${astroId}`, roomId);
-            pubClient.publish("call_start", JSON.stringify({
-              roomId,
-              astroId
-            }));
+          pubClient.publish("call_start", JSON.stringify({
+          room_id: roomId,
+          callerId: data.user_id,
+          receiverId: astroId
+          }));
           } else {
             socket.emit("call_queue_position", {
               message: `You are in queue`,
@@ -370,6 +376,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         }
       });
 
+    onSafe("join_call", ({ room_id }) => {
+    socket.join(room_id);
+    socket.to(room_id).emit("peer_joined");
+    });
+
       onSafe("offer", ({ room_id, offer }) => {
         safePublish(pubClient, "offer", {
           room_id: room_id,
@@ -379,6 +390,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("ice-candidate", ({ room_id, candidate }) => {
         socket.to(room_id).emit("ice-candidate", { candidate });
+         safePublish(pubClient, "ice_candidate", {
+          room_id: room_id,
+          candidate: candidate
+        });
+
       });
 
       onSafe("call_ended_by_user", ({ room_id }) => {

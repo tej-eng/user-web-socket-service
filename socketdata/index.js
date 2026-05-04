@@ -281,18 +281,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             waitTime += user.maximum_time;
           }
 
-          if (queueLength > 5) {
-            socket.emit("queue_full", {
-              message: "Astrologer is busy. Please try another astrologer.",
-              status: "FULL",
-            });
-
-            return socket.emit("chat_rejected", {
-              message: "Astrologer is busy. Please try another astrologer.",
-              status: "FULL",
-            });
-          }
-
           if (queueLength === 1 ) {
             safePublish(pubClient, "chat_requests", {
               message: "Chat request sent successfully",

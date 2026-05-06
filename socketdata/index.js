@@ -248,30 +248,30 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
 
 
-             case "callAcceptedByAstrologer":
+            case "callAcceptedByAstrologer":
               console.log("Received callAcceptedByAtrologer message:", data);
               let parsed = data;
-              console.log("Received callAcceptedByAtrologer data:", parsed);  
+              console.log("Received callAcceptedByAtrologer data:", parsed);
               try {
-              parsed = JSON.parse(parsed);
-               
-              //  handle double stringify
-              if (typeof parsed === "string") {
-                console.log("Data was double stringified, parsing again:", parsed);
-              parsed = JSON.parse(parsed);
-              }
+                parsed = JSON.parse(parsed);
+
+                //  handle double stringify
+                if (typeof parsed === "string") {
+                  console.log("Data was double stringified, parsing again:", parsed);
+                  parsed = JSON.parse(parsed);
+                }
 
               } catch (e) {
-              console.error(" JSON PARSE ERROR:", e);
-              return;
+                console.error(" JSON PARSE ERROR:", e);
+                return;
               }
 
               console.log("FINAL DATA:", parsed);
               console.log("ROOM:", parsed.roomId);
 
               if (!parsed.roomId) {
-              console.error(" STILL NO ROOM ID", parsed);
-              return;
+                console.error(" STILL NO ROOM ID", parsed);
+                return;
               }
 
               io.to(parsed.roomId).emit("callAcceptedByAstrologer", parsed);
@@ -281,10 +281,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(data.room_id).emit("answer", data);
               console.log("Emitted answer to room:", data.room_id);
               break;
-              case "call_ended_by_astrologer":
+            case "call_ended_by_astrologer":
               io.to(data.room_id).emit("call_ended_by_astrologer", data);
               break;
-             
+
 
           }
         } catch (err) {
@@ -366,8 +366,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           const astroId = data.astro_id;
           const queueKey = `call_queue:${astroId}`;
           const roomId = data.room_id;
-          socket.join(String(roomId));
-          socket.roomId = String(roomId);
+          // socket.join(String(roomId));
+          // socket.roomId = String(roomId);
 
           // Get current queue length
           const queueLength = await pubClient.lLen(queueKey);
@@ -385,12 +385,12 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
 
           if (queueLength === 1) {
-           await redisClient.set(`active_call:${astroId}`, roomId);
-          pubClient.publish("call_start", JSON.stringify({
-          room_id: roomId,
-          callerId: data.user_id,
-          receiverId: astroId
-          }));
+            await redisClient.set(`active_call:${astroId}`, roomId);
+            pubClient.publish("call_start", JSON.stringify({
+              room_id: roomId,
+              callerId: data.user_id,
+              receiverId: astroId
+            }));
           } else {
             socket.emit("call_queue_position", {
               message: `You are in queue`,
@@ -403,16 +403,16 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         }
       });
 
-    onSafe("join_call", ({ roomId }) => {
-    console.log("Joining call room:", roomId);
-    console.log("Socket ID:", socket.id);
-    socket.join(roomId);
-    pubClient.publish("join_call", JSON.stringify({ roomId }));
-    console.log("Joined call room:", roomId);
-    socket.to(roomId).emit("peer_joined");
-    pubClient.publish("peer_joined", JSON.stringify({ roomId }));
-    console.log("Emitted peer_joined to room:", roomId);
-    });
+      onSafe("join_call", ({ roomId }) => {
+        console.log("Joining call room:", roomId);
+        console.log("Socket ID:", socket.id);
+        socket.join(roomId);
+        // pubClient.publish("join_call", JSON.stringify({ roomId }));
+        console.log("Joined call room:", roomId);
+        socket.to(roomId).emit("peer_joined");
+        // pubClient.publish("peer_joined", JSON.stringify({ roomId }));
+        console.log("Emitted peer_joined to room:", roomId);
+      });
 
       onSafe("offer", ({ room_id, offer }) => {
         console.log("Received offer for room:", room_id);
@@ -422,10 +422,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-      onSafe("ice-candidate", ({ room_id, candidate }) => {
+      onSafe("ice_candidate", ({ room_id, candidate }) => {
         console.log("Received ice candidate for room:", room_id);
-        socket.to(room_id).emit("ice-candidate", { candidate });
-         safePublish(pubClient, "ice_candidate", {
+        // socket.to(room_id).emit("ice_candidate", { candidate });
+        safePublish(pubClient, "ice_candidate", {
           room_id: room_id,
           candidate: candidate
         });

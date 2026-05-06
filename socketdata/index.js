@@ -99,7 +99,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       "end_chat_by_astrologer",
       "astrologer_disconnected",
       "queue_update",
-      "callAcceptedByAtrologer",
+      "callAcceptedByAstrologer",
       "answer",
       "call_ended_by_astrologer",
     ];
@@ -248,7 +248,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
 
 
-             case "callAcceptedByAtrologer":
+             case "callAcceptedByAstrologer":
               console.log("Received callAcceptedByAtrologer message:", data);
               let parsed = data;
               console.log("Received callAcceptedByAtrologer data:", parsed);  
@@ -274,7 +274,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               return;
               }
 
-              io.to(parsed.roomId).emit("callAcceptedByAtrologer", parsed);
+              io.to(parsed.roomId).emit("callAcceptedByAstrologer", parsed);
               break;
             case "answer":
               io.to(data.room_id).emit("answer", data);

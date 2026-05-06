@@ -407,6 +407,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
     socket.join(roomId);
     console.log("Joined call room:", roomId);
     socket.to(roomId).emit("peer_joined");
+    pubClient.publish("peer_joined", JSON.stringify({ roomId }));
     console.log("Emitted peer_joined to room:", roomId);
     });
 

@@ -402,6 +402,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
     onSafe("join_call", ({ room_id }) => {
+      console.log("Joining call room:", room_id);
     socket.join(room_id);
     socket.to(room_id).emit("peer_joined");
     });

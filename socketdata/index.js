@@ -401,10 +401,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         }
       });
 
-    onSafe("join_call", ({ room_id }) => {
-      console.log("Joining call room:", room_id);
-    socket.join(room_id);
-    socket.to(room_id).emit("peer_joined");
+    onSafe("join_call", ({ roomId }) => {
+      console.log("Joining call room:", roomId);
+    socket.join(roomId);
+    socket.to(roomId).emit("peer_joined");
     });
 
       onSafe("offer", ({ room_id, offer }) => {

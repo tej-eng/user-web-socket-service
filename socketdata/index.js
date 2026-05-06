@@ -277,7 +277,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(parsed.roomId).emit("callAcceptedByAstrologer", parsed);
               break;
             case "answer":
+              console.log("Received answer message:", data);
               io.to(data.room_id).emit("answer", data);
+              console.log("Emitted answer to room:", data.room_id);
               break;
               case "call_ended_by_astrologer":
               io.to(data.room_id).emit("call_ended_by_astrologer", data);
@@ -412,6 +414,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
     });
 
       onSafe("offer", ({ room_id, offer }) => {
+        console.log("Received offer for room:", room_id);
         safePublish(pubClient, "offer", {
           room_id: room_id,
           offer: offer,
@@ -419,6 +422,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("ice-candidate", ({ room_id, candidate }) => {
+        console.log("Received ice candidate for room:", room_id);
         socket.to(room_id).emit("ice-candidate", { candidate });
          safePublish(pubClient, "ice_candidate", {
           room_id: room_id,

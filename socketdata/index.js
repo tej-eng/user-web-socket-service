@@ -250,7 +250,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
             case "callAcceptedByAstrologer":
               console.log("Received callAcceptedByAtrologer message:", data);
-              let parsed = data;
+             /* let parsed = data;
               console.log("Received callAcceptedByAtrologer data:", parsed);
               try {
                 parsed = JSON.parse(parsed);
@@ -272,9 +272,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               if (!parsed.roomId) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
-              }
-
-              io.to(parsed.roomId).emit("callAcceptedByAstrologer", parsed);
+              }*/
+              console.log("Emitting callAcceptedByAstrologer to room:", data.roomId);
+              io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
             case "answer":
               console.log("Received answer message:", data);

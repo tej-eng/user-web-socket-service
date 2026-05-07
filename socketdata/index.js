@@ -403,16 +403,31 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         }
       });
 
-      onSafe("join_call", ({ roomId }) => {
-        console.log("Joining call room:", roomId);
-        console.log("Socket ID:", socket.id);
-        socket.join(roomId);
-        // pubClient.publish("join_call", JSON.stringify({ roomId }));
-        console.log("Joined call room:", roomId);
-        socket.to(roomId).emit("peer_joined");
-        // pubClient.publish("peer_joined", JSON.stringify({ roomId }));
-        console.log("Emitted peer_joined to room:", roomId);
-      });
+      onSafe("join_call", async ({ roomId }) => {
+  console.log("Joining call room:", roomId);
+  console.log("Socket ID:", socket.id);
+
+  await socket.join(roomId);
+
+  console.log("Joined call room:", roomId);
+
+  const clients = await io.in(roomId).fetchSockets();
+
+  console.log(
+    "Clients in room:",
+    clients.map((s) => s.id)
+  );
+
+  // emit only if 2 users present
+  if (clients.length > 1) {
+    console.log("Sending peer_joined");
+
+    socket.to(roomId).emit("peer_joined");
+
+    // optional:
+    socket.emit("peer_joined");
+  }
+});
 
       onSafe("offer", ({ room_id, offer }) => {
         console.log("Received offer for room:", room_id);

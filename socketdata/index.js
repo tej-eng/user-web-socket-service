@@ -422,7 +422,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-      onSafe("ice_candidate", ({ room_id, candidate }) => {
+      onSafe("ice-candidate", ({ room_id, candidate }) => {
         console.log("Received ice candidate for room:", room_id);
         // socket.to(room_id).emit("ice_candidate", { candidate });
         safePublish(pubClient, "ice_candidate", {

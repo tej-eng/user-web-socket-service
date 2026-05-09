@@ -363,6 +363,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("call_request", async (data) => {
         try {
+          console.log("Received call_request data:", data);
           const astroId = data.astro_id;
           const queueKey = `call_queue:${astroId}`;
           const roomId = data.room_id;

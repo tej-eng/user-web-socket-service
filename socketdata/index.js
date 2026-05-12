@@ -306,6 +306,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               console.log("Emitted answer to room:", data.room_id);
               break;
             case "call_ended_by_astrologer":
+              console.log("Received call_ended_by_astrologer message:", data);
               io.to(data.room_id).emit("call_ended_by_astrologer", data);
               break;
           }

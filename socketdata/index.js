@@ -298,6 +298,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
               }*/
+             console.log("Handling call acceptance for roomId:444444444444", data.roomId);
+             handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
             case "answer":

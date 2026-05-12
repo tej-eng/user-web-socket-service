@@ -1,4 +1,5 @@
 export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
+  console.log("Handling call acceptance for roomId:111111111111", roomId);
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId },
   });
@@ -8,25 +9,27 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   const astrologer = await prisma.astrologer.findUnique({
     where: { id: intake.astrologerId },
   });
-
+ console.log("Astrologer details for roomId:222222222222", roomId, "Astrologer:", astrologer);
   if (!astrologer) throw new Error("Astrologer not found");
 
   const session = await prisma.session.create({
     data: {
       userId: intake.userId,
       astrologerId: intake.astrologerId,
-      type: "CHAT",
+      type: "CALL",
       status: "ONGOING",
       ratePerMin: Math.round(astrologer.price),
       startedAt: new Date(),
     },
   });
-  const queueKey = `chat_queue:${intake.astrologerId}`;
+  console.log("Created session for roomId:333333333333", roomId, "Session:", session);
+
+  const queueKey = `call_queue:${intake.astrologerId}`;
   //await updateQueuePositions(queueKey, redis, pubClient);
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+  multi.sRem(`call_user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
     `active_call:${roomId}`,
     JSON.stringify({
@@ -67,7 +70,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
     /* =========================
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
-    const active_call = await redis.get(`active_call:${astroId}`);
+    const active_call = await redis.get(`active_call:${roomId}`);
 
     if (active_call) {
       console.log("Active call data found for roomId:222222222222", roomId, "Data:", active_call);
@@ -237,7 +240,7 @@ export const processNextCall = async (astroId, redis, pubClient) => {
   const parsed = JSON.parse(nextCall);
 
   // mark active call
-  await redis.set(`active_call:${astroId}`, parsed.room_id);
+  //await redis.set(`active_call:${astroId}`, parsed.room_id);
 
   // notify both users
   pubClient.publish("call_start", JSON.stringify({

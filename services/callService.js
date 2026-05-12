@@ -48,7 +48,8 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
   multi.del(`call_request_data:${roomId}`);
 
-  await multi.exec();
+  const check = await multi.exec();
+  console.log("Redis multi exec result for accepting call for roomId:444444444444", roomId, "Result:", check);
 
   return session;
 };

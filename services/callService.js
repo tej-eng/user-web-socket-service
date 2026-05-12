@@ -50,6 +50,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   return session;
 };
 export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
+  console.log("Finalizing call session for roomId:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", roomId, "astroId:", astroId);
   let lockKey = null;
   let lockValue = null;
   try {
@@ -57,6 +58,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
        DELETE REDIS CHAT LIST
     ========================= */
     const currentRoom = await redis.get(`current_call:${astroId}`);
+    console.log("Current room for astroId11111111111", astroId, "is", currentRoom);
     if (currentRoom) {
       await redis.del(`current_call:${astroId}`);
     }
@@ -68,6 +70,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
     const active_call = await redis.get(`active_call:${roomId}`);
 
     if (active_call) {
+      console.log("Active call data found for roomId:222222222222", roomId, "Data:", active_call);
       const parsed = JSON.parse(active_call);
 
       lockKey = `finalize_lock:${parsed.sessionId}`;
@@ -82,7 +85,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
       const existingTx = await prisma.walletTransaction.findFirst({
         where: { sessionId: parsed.sessionId },
       });
-
+     console.log("Existing transaction check for sessionId:333333333333", parsed.sessionId, "Result:", existingTx);
       if (existingTx) return;
 
       await prisma.$transaction(async (tx) => {

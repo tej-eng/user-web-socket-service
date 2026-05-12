@@ -67,7 +67,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
     /* =========================
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
-    const active_call = await redis.get(`active_call:${roomId}`);
+    const active_call = await redis.get(`active_call:${astroId}`);
 
     if (active_call) {
       console.log("Active call data found for roomId:222222222222", roomId, "Data:", active_call);

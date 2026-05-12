@@ -273,7 +273,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
               }*/
-              console.log("Emitting callAcceptedByAstrologer to room:", data.roomId);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
             case "answer":
@@ -390,7 +389,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             pubClient.publish("call_start", JSON.stringify({
               room_id: roomId,
               callerId: data.user_id,
-              receiverId: astroId
+              receiverId: astroId,  
+              callTime:data.maximum_time,
             }));
           } else {
             socket.emit("call_queue_position", {
@@ -448,13 +448,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       });
 
-      onSafe("call_ended_by_user", ({ room_id }) => {
+      onSafe("call_ended_by_user", (data) => {
         safePublish(pubClient, "call_ended_by_user", {
-          room_id: room_id,
-
+          room_id: data.room_id,
         });
+        finalizeCallSession(data.room_id, prisma, redisClient,data.astro_id);
 
-        logEvent("CallEnded", room_id);
+        logEvent("CallEnded", data.room_id,data.astro_id);
       });
 
       /* =========================

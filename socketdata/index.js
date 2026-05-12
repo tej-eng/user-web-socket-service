@@ -478,6 +478,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
+        console.log("Emitted call_ended_by_user for roomAAAAAAAAAa:", data.room_id,  data.astro_id);
         //finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
 
         logEvent("CallEnded", data.room_id, data.astro_id);

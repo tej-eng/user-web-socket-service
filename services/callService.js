@@ -125,7 +125,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         const userWallet = await tx.userWallet.findUnique({
           where: { userId: session.userId },
         });
-        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.sRem(`call_user_in_queue:${astroId}`, session.userId);
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -206,7 +206,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         });
       });
 
-      await redis.del(`active_call:${roomId}`);
+      await redis.del(`active_call:${astroId}`);
     }
 
     return true;
@@ -327,4 +327,104 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     console.error("updateQueuePositions error:", error);
   }
   return true;
+};
+// services/queueService.js
+
+export const removeUserFromQueue = async ({
+  redis,
+  queueKey,
+  roomId,
+}) => {
+  try {
+    console.log(
+      "🔍 Removing queue item:",
+      roomId,
+      "from",
+      queueKey
+    );
+
+    // =========================
+    // GET QUEUE
+    // =========================
+    const queueList =
+      await redis.lRange(
+        queueKey,
+        0,
+        -1
+      );
+
+    if (
+      !queueList ||
+      queueList.length === 0
+    ) {
+      console.log(
+        "⚠️ Queue empty"
+      );
+
+      return false;
+    }
+
+    let itemToRemove = null;
+
+    // =========================
+    // FIND ITEM
+    // =========================
+    for (const item of queueList) {
+      try {
+        const parsed =
+          JSON.parse(item);
+
+        console.log(
+          "Checking queue item:",
+          parsed.roomId,
+          "===",
+          roomId
+        );
+
+        if (
+          parsed.roomId === roomId
+        ) {
+          itemToRemove = item;
+          break;
+        }
+      } catch (err) {
+        console.error(
+          "Queue parse error:",
+          err
+        );
+      }
+    }
+
+    // =========================
+    // REMOVE ITEM
+    // =========================
+    if (itemToRemove) {
+      const removed =
+        await redis.lRem(
+          queueKey,
+          1,
+          itemToRemove
+        );
+
+      console.log(
+        "✅ Removed from queue:",
+        removed
+      );
+
+      return true;
+    }
+
+    console.log(
+      "⚠️ No matching room found in queue"
+    );
+
+    return false;
+  } catch (error) {
+    console.error(
+      "removeUserFromQueue error:",
+      error
+    );
+
+    return false;
+  }
 };

@@ -205,7 +205,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           },
         });
       });
-
+      console.log("Session finalized and wallets updated for roomId:8888888888888888", `active_call:${roomId}`);
       await redis.del(`active_call:${roomId}`);
     }
 

@@ -206,7 +206,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         });
       });
 
-      await redis.del(`active_call:${astroId}`);
+      await redis.del(`active_call:${roomId}`);
     }
 
     return true;

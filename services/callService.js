@@ -28,7 +28,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   const multi = redis.multi();
   multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
-    `active_chat:${roomId}`,
+    `active_call:${roomId}`,
     JSON.stringify({
       sessionId: session.id,
       userId: intake.userId,
@@ -38,12 +38,12 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     { EX: 3600 },
   );
   multi.set(
-    `current_chat:${intake.astrologerId}`, //for testing
+    `current_call:${intake.astrologerId}`, //for testing
     roomId,
     { EX: 3600 },
   );
 
-  multi.del(`chat_request_data:${roomId}`);
+  multi.del(`call_request_data:${roomId}`);
 
   await multi.exec();
 
@@ -54,49 +54,21 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
   let lockValue = null;
   try {
     /* =========================
-        GET ALL MESSAGES FROM REDIS
-    ========================= */
-    const messages = await redis.lRange(`chat_messages:${roomId}`, 0, -1);
-
-    const parsedMessages = messages.map((m) => JSON.parse(m));
-
-    /* =========================
-       SAVE TO DB (BULK)
-    ========================= */
-    if (parsedMessages.length > 0) {
-      await prisma.message.createMany({
-        data: parsedMessages.map((msg) => ({
-          msgId: msg.msg_id,
-          roomId: msg.room_id,
-          senderId: msg.sender_id,
-          receiverId: msg.received_id,
-          message: msg.message,
-          image: msg.image,
-          sender: msg.sender,
-          replyTo: msg.replyTo,
-        })),
-        skipDuplicates: true,
-      });
-    }
-
-    /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
-    await redis.del(`chat_messages:${roomId}`);
-    // await redis.sRem(`user_in_queue:${astroId}`, userId);
-    const currentRoom = await redis.get(`current_chat:${astroId}`);
+    const currentRoom = await redis.get(`current_call:${astroId}`);
     if (currentRoom) {
-      await redis.del(`current_chat:${astroId}`);
+      await redis.del(`current_call:${astroId}`);
     }
    
 
     /* =========================
    COMPLETE SESSION + WALLET SYNC (ATOMIC)
 ========================= */
-    const activeChat = await redis.get(`active_chat:${roomId}`);
+    const active_call = await redis.get(`active_call:${roomId}`);
 
-    if (activeChat) {
-      const parsed = JSON.parse(activeChat);
+    if (active_call) {
+      const parsed = JSON.parse(active_call);
 
       lockKey = `finalize_lock:${parsed.sessionId}`;
       lockValue = `${Date.now()}_${Math.random()}`;
@@ -199,7 +171,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
             sessionId: session.id,
             type: "DEBIT",
             coins: coinsDeducted,
-            description: "Chat session deduction",
+            description: "Call session deduction",
           },
         });
 
@@ -210,7 +182,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
             sessionId: session.id,
             type: "CREDIT",
             coins: coinsEarned,
-            description: "Chat session earning",
+            description: "Call session earning",
           },
         });
 
@@ -228,7 +200,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         });
       });
 
-      await redis.del(`active_chat:${roomId}`);
+      await redis.del(`active_call:${roomId}`);
     }
 
     return true;
@@ -302,7 +274,7 @@ export const handleRejectCall = async (roomId, prisma, redis, pubClient) => {
 
     // remove user from set
     const check = await redis.sRem(
-      `user_in_queue:${intake.astrologerId}`,
+      `call_user_in_queue:${intake.astrologerId}`,
       intake.userId,
     );
 

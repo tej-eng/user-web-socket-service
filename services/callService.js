@@ -24,12 +24,12 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   });
   console.log("Created session for roomId:333333333333", roomId, "Session:", session);
 
-  const queueKey = `call_queue:${intake.astrologerId}`;
+  const queueKey = `queue:${intake.astrologerId}`;
   //await updateQueuePositions(queueKey, redis, pubClient);
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  multi.sRem(`call_user_in_queue:${intake.astrologerId}`, intake.userId);
+  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
   multi.set(
     `active_call:${roomId}`,
     JSON.stringify({
@@ -46,7 +46,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     { EX: 3600 },
   );
 
-  multi.del(`call_request_data:${roomId}`);
+  multi.del(`request_data:${roomId}`);
 
   const check = await multi.exec();
   console.log("Redis multi exec result for accepting call for roomId:444444444444", roomId, "Result:", check);
@@ -126,7 +126,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         const userWallet = await tx.userWallet.findUnique({
           where: { userId: session.userId },
         });
-        await redis.sRem(`call_user_in_queue:${astroId}`, session.userId);
+        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -232,7 +232,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
 
 // services/callService.js
 export const processNextCall = async (astroId, redis, pubClient) => {
-  const queueKey = `call_queue:${astroId}`;
+  const queueKey = `queue:${astroId}`;
 
   const nextCall = await redis.lPop(queueKey);
 
@@ -257,7 +257,7 @@ export const handleRejectCall = async (roomId, prisma, redis, pubClient) => {
 
     if (!intake) return null;
 
-    const queueKey = `call_queue:${intake.astrologerId}`;
+    const queueKey = `queue:${intake.astrologerId}`;
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
 
@@ -281,11 +281,11 @@ export const handleRejectCall = async (roomId, prisma, redis, pubClient) => {
 
     // remove user from set
     const check = await redis.sRem(
-      `call_user_in_queue:${intake.astrologerId}`,
+      `user_in_queue:${intake.astrologerId}`,
       intake.userId,
     );
 
-    multi.del(`call_request_data:${roomId}`);
+    multi.del(`request_data:${roomId}`);
 
     await multi.exec();
     if (check) {

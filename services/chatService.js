@@ -21,7 +21,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
       startedAt: new Date(),
     },
   });
-  const queueKey = `chat_queue:${intake.astrologerId}`;
+  const queueKey = `queue:${intake.astrologerId}`;
   //await updateQueuePositions(queueKey, redis, pubClient);
 
   //  CORRECT REDIS MULTI (v4)
@@ -43,7 +43,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
     { EX: 3600 },
   );
 
-  multi.del(`chat_request_data:${roomId}`);
+  multi.del(`request_data:${roomId}`);
 
   await multi.exec();
 
@@ -254,7 +254,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 // services/chatService.js
 export const processNextChat = async (astrologerId, redis, pubClient) => {
   try {
-    const queueKey = `chat_queue:${astrologerId}`;
+    const queueKey = `queue:${astrologerId}`;
     const queueItem = await redis.lIndex(queueKey, 0);
     console.log("Next queue item for astrologer AAAAAAAAAAAAAAAAAAAAAAA", astrologerId, queueItem);
     if (!queueItem) return null;
@@ -262,6 +262,8 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     const nextRoomId = parsedQueue.roomId;
     const maximumTime = parsedQueue.maximum_time;
     const userId = parsedQueue.user_id;
+    const type=parsedQueue.type;
+    if(type=="CALL") return;
     console.log("Parsed queue item:", nextRoomId);
     if (!nextRoomId) {
       return null;
@@ -273,10 +275,10 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
       return await processNextChat(astrologerId, redis, pubClient);
     }
 
-    const data = await redis.get(`chat_request_data:${nextRoomId}`);
+    const data = await redis.get(`request_data:${nextRoomId}`);
     console.log("Chat request data for room:", nextRoomId, data);
     if (data) {
-      await redis.del(`chat_request_data:${nextRoomId}`);
+      await redis.del(`request_data:${nextRoomId}`);
     } else {
       console.warn(`No chat request data found for room ${nextRoomId}`);
       await redis.lPop(queueKey);
@@ -322,7 +324,7 @@ export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
 
     if (!intake) return null;
 
-    const queueKey = `chat_queue:${intake.astrologerId}`;
+    const queueKey = `queue:${intake.astrologerId}`;
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
 
@@ -350,7 +352,7 @@ export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
       intake.userId,
     );
 
-    multi.del(`chat_request_data:${roomId}`);
+    multi.del(`request_data:${roomId}`);
 
     await multi.exec();
     if (check) {

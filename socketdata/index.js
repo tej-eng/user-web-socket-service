@@ -195,7 +195,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               );
 
               //------DELETE KEY AFTER ASTRLOGER CHAT END--------
-              let queueKey = `chat_queue:${data.astroId}`;
+              let queueKey = `queue:${data.astroId}`;
               const queueList = await redisClient.lRange(queueKey, 0, -1);
               console.log("Queue list before removing item:", queueList);
 
@@ -263,7 +263,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
                 );
                 let queueLength = await pubClient.lLen(
-                  `chat_queue:${data.astroid}`,
+                  `queue:${data.astroid}`,
                 );
                 if (queueLength > 0) {
                   setTimeout(async () => {
@@ -335,7 +335,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       onSafe("chat_request", async (data) => {
         try {
           const astroId = data.astro_id;
-          const queueKey = `chat_queue:${astroId}`;
+          const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
           socket.join(String(roomId));
           socket.roomId = String(roomId);
@@ -391,7 +391,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         try {
           console.log("Received call_request data:", data);
           const astroId = data.astro_id;
-          const queueKey = `call_queue:${astroId}`;
+          const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
           // socket.join(String(roomId));
           // socket.roomId = String(roomId);
@@ -422,7 +422,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               }),
             );
           } else {
-            socket.emit("call_queue_position", {
+            socket.emit("queue_position", {
               message: `You are in queue`,
               position: queueLength - 1,
               waitTime: waitTime * 60,
@@ -592,7 +592,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             await pubClient.del(`current_chat:${astroId}`);
           }
           //------DELETE KEY AFTER USER CHAT END--------
-          let queueKey = `chat_queue:${data.astroId}`;
+          let queueKey = `queue:${data.astroId}`;
           console.log(
             "Queue key to remove item from after user ended chat:AAAAAAAAAAAAAAA",
             queueKey,
@@ -660,7 +660,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           console.log(
             "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
           );
-          let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+          let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
           if (queueLength > 0) {
             setTimeout(async () => {
               await processNextChat(data.astroid, redisClient, pubClient);
@@ -695,7 +695,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           console.log(
             "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
           );
-          let queueLength = await pubClient.lLen(`chat_queue:${data.astroid}`);
+          let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
           if (queueLength > 0) {
             setTimeout(async () => {
               await processNextChat(data.astroid, redisClient, pubClient);
@@ -732,7 +732,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
               );
               let queueLength = await pubClient.lLen(
-                `chat_queue:${data.astroid}`,
+                `queue:${data.astroid}`,
               );
               if (queueLength > 0) {
                 setTimeout(async () => {

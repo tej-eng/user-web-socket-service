@@ -315,6 +315,12 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
               case "call_cancel_by_astrologer":
               console.log("Received call_cancel_by_astrologer message:", data);
+               await handleReject(
+                  data.roomId,
+                  prisma,
+                  redisClient,
+                  pubClient,
+                );
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }

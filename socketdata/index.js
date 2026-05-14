@@ -490,19 +490,19 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-      onSafe("call_ended_by_user", (data) => {
+      onSafe("call_ended_by_user", async(data) => {
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
         console.log("Emitted call_ended_by_user for roomAAAAAAAAAa:", data.room_id,  data.astro_id);
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
         removeUserFromQueue({ redis: redisClient, queueKey: `queue:${data.astro_id}`, roomId: data.room_id });
-         const res = await updateQueuePositions(
+         const response = await updateQueuePositions(
             `queue:${data.astro_id}`,
             redisClient,
             pubClient,
           );
-          if (res) {
+          if (response) {
             console.log(
               "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
             );

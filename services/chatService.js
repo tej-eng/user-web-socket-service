@@ -252,7 +252,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 };
 
 // services/chatService.js
-export const processNextChat = async (astrologerId, redis, pubClient) => {
+export const processNextRequest = async (astrologerId, redis, pubClient) => {
   try {
     const queueKey = `queue:${astrologerId}`;
     const queueItem = await redis.lIndex(queueKey, 0);
@@ -263,24 +263,24 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     const maximumTime = parsedQueue.maximum_time;
     const userId = parsedQueue.user_id;
     const type=parsedQueue.type;
-    if(type=="CALL") return;
+    
     console.log("Parsed queue item:", nextRoomId);
     if (!nextRoomId) {
       return null;
     }
     // PREVENT DUPLICATE / ALREADY ACTIVE CHAT
-    const isActive = await redis.exists(`active_chat:${nextRoomId}`);
+    const isActive = await redis.exists(`active_${type}:${nextRoomId}`);
     if (isActive) {
       // Try next user recursively
-      return await processNextChat(astrologerId, redis, pubClient);
+      return await processNextRequest(astrologerId, redis, pubClient);
     }
 
     const data = await redis.get(`request_data:${nextRoomId}`);
-    console.log("Chat request data for room:", nextRoomId, data);
+    console.log(`${type} request data for room:`, nextRoomId, data);
     if (data) {
       await redis.del(`request_data:${nextRoomId}`);
     } else {
-      console.warn(`No chat request data found for room ${nextRoomId}`);
+      console.warn(`No ${type} request data found for room ${nextRoomId}`);
       await redis.lPop(queueKey);
       return;
       //return await processNextChat(astrologerId, redis, pubClient);
@@ -289,10 +289,10 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     const parsed = JSON.parse(data);
     // Send request to astrologer
     const result = await pubClient.publish(
-      "chat_requests",
+      `${type}_requests`,
       JSON.stringify({
         room_id: nextRoomId,
-        message: "Chat request sent successfully",
+        message: `${type} request sent successfully`,
         userName: parsed.userName,
         gender: parsed.gender,
         dateOfBirth: parsed.dateOfBirth,
@@ -312,11 +312,11 @@ export const processNextChat = async (astrologerId, redis, pubClient) => {
     }
     return nextRoomId;
   } catch (error) {
-    console.error("processNextChat error:", error);
+    console.error("processNextRequest error:", error);
     return null;
   }
 };
-export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
+export const handleReject = async (roomId, prisma, redis, pubClient) => {
   try {
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
@@ -361,7 +361,7 @@ export const handleRejectChat = async (roomId, prisma, redis, pubClient) => {
 
     return intake.astrologerId;
   } catch (error) {
-    console.error("handleRejectChat error:", error);
+    console.error("handleReject error:", error);
     throw error;
   }
   

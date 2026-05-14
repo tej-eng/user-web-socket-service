@@ -386,7 +386,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               message: `You are in queue`,
               position: queueLength - 1,
               waitTime: waitTime * 60,
-              type:"CHAT",
+              type:"chat",
             });
           }
         } catch (err) {
@@ -433,7 +433,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               message: `You are in queue`,
               position: queueLength - 1,
               waitTime: waitTime * 60,
-              type:"CALL",
+              type:"call",
             });
           }
         } catch (err) {

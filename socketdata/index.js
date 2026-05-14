@@ -495,10 +495,24 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           room_id: data.room_id,
         });
         console.log("Emitted call_ended_by_user for roomAAAAAAAAAa:", data.room_id,  data.astro_id);
-        removeUserFromQueue({ redis: redisClient, queueKey: `queue:${data.astro_id}`, roomId: data.room_id });
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
-
-        logEvent("CallEnded", data.room_id, data.astro_id);
+        removeUserFromQueue({ redis: redisClient, queueKey: `queue:${data.astro_id}`, roomId: data.room_id });
+         const res = await updateQueuePositions(
+            `queue:${data.astro_id}`,
+            redisClient,
+            pubClient,
+          );
+          if (res) {
+            console.log(
+              "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
+            );
+            let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextRequest(data.astro_id, redisClient, pubClient);
+              }, 5000);
+            }
+          }
       });
 
       /* =========================

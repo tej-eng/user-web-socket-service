@@ -318,6 +318,7 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
 };
 export const handleReject = async (roomId, prisma, redis, pubClient) => {
   try {
+    console.log("Handling reject for roomId TESTTTTTTTTTTTTTTTT:", roomId);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });

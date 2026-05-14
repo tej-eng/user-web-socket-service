@@ -103,6 +103,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       "callAcceptedByAstrologer",
       "answer",
       "call_ended_by_astrologer",
+      "call_cancel_by_astrologer",
     ];
 
     for (const channel of channels) {
@@ -311,6 +312,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             case "call_ended_by_astrologer":
               console.log("Received call_ended_by_astrologer message:", data);
               io.to(data.roomId).emit("call_ended_by_astrologer", data);
+              break;
+              case "call_cancel_by_astrologer":
+              console.log("Received call_cancel_by_astrologer message:", data);
+              io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }
         } catch (err) {
@@ -653,6 +658,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_chat_request", async (data) => {
+        console.log("Received cancel_chat_requestTTTTTTTTTTTTTT:", data);
         const res = await handleReject(
           data.room_id,
           prisma,

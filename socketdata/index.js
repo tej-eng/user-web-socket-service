@@ -742,7 +742,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       // });
 
       onSafe("autodisconnect", async (data) => {
-        
+          console.log("Received autodisconnect event FROM USER SIDE :", data);
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);
         try {

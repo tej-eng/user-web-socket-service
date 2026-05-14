@@ -232,6 +232,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
 
 // services/callService.js
 export const processNextCall = async (astroId, redis, pubClient) => {
+  console.log("comming in processNextCall");
   const queueKey = `queue:${astroId}`;
 
   const nextCall = await redis.lPop(queueKey);

@@ -382,6 +382,7 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
           position: i,
           waitTime: waitTime * 60, 
           message: `Your position is ${i}. Estimated wait time ${waitTime} mins`,
+          type: "CHAT",
         };
 
         await pubClient.publish("queue_update", JSON.stringify(payload));

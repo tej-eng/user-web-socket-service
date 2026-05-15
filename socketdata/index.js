@@ -527,12 +527,12 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           data.astro_id,
         );
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
-        const removeUserFromQueue = await removeUserFromQueue({
+        const removeUser = await removeUserFromQueue({
           redis: redisClient,
           queueKey: `queue:${data.astro_id}`,
           roomId: data.room_id,
         });
-        if(removeUserFromQueue){
+        if(removeUser){
           const response = await updateQueuePositions(
           `queue:${data.astro_id}`,
           redisClient,

@@ -130,12 +130,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
-                await handleReject(
-                  data.roomid,
-                  prisma,
-                  redisClient,
-                  pubClient,
-                );
+                await handleReject(data.roomid, prisma, redisClient, pubClient);
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
               }
@@ -263,12 +258,14 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.log(
                   "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
                 );
-                let queueLength = await pubClient.lLen(
-                  `queue:${data.astroid}`,
-                );
+                let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
                 if (queueLength > 0) {
                   setTimeout(async () => {
-                    await processNextRequest(data.astroid, redisClient, pubClient);
+                    await processNextRequest(
+                      data.astroid,
+                      redisClient,
+                      pubClient,
+                    );
                   }, 5000);
                 }
               }
@@ -300,8 +297,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
               }*/
-             console.log("Handling call acceptance for roomId:444444444444", data.roomId);
-             handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
+              console.log(
+                "Handling call acceptance for roomId:444444444444",
+                data.roomId,
+              );
+              handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
             case "answer":
@@ -312,15 +312,43 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             case "call_ended_by_astrologer":
               console.log("Received call_ended_by_astrologer message:", data);
               io.to(data.roomId).emit("call_ended_by_astrologer", data);
-              break;
-              case "call_cancel_by_astrologer":
-              console.log("Received call_cancel_by_astrologer message:", data);
-               await handleReject(
-                  data.roomId,
-                  prisma,
-                  redisClient,
-                  pubClient,
+              finalizeCallSession(
+                data.room_id,
+                prisma,
+                redisClient,
+                data.astro_id,
+              );
+              removeUserFromQueue({
+                redis: redisClient,
+                queueKey: `queue:${data.astro_id}`,
+                roomId: data.room_id,
+              });
+              const response = await updateQueuePositions(
+                `queue:${data.astro_id}`,
+                redisClient,
+                pubClient,
+              );
+              if (response) {
+                console.log(
+                  "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
                 );
+                let queueLength = await pubClient.lLen(
+                  `queue:${data.astro_id}`,
+                );
+                if (queueLength > 0) {
+                  setTimeout(async () => {
+                    await processNextRequest(
+                      data.astro_id,
+                      redisClient,
+                      pubClient,
+                    );
+                  }, 5000);
+                }
+              }
+              break;
+            case "call_cancel_by_astrologer":
+              console.log("Received call_cancel_by_astrologer message:", data);
+              await handleReject(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }
@@ -392,7 +420,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               message: `You are in queue`,
               position: queueLength - 1,
               waitTime: waitTime * 60,
-              type:"chat",
+              type: "chat",
             });
           }
         } catch (err) {
@@ -406,7 +434,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           const astroId = data.astro_id;
           const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
-           socket.join(String(roomId));
+          socket.join(String(roomId));
           socket.roomId = String(roomId);
 
           // Get current queue length
@@ -439,7 +467,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               message: `You are in queue`,
               position: queueLength - 1,
               waitTime: waitTime * 60,
-              type:"call",
+              type: "call",
             });
           }
         } catch (err) {
@@ -490,29 +518,37 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-      onSafe("call_ended_by_user", async(data) => {
+      onSafe("call_ended_by_user", async (data) => {
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
-        console.log("Emitted call_ended_by_user for roomAAAAAAAAAa:", data.room_id,  data.astro_id);
+        console.log(
+          "Emitted call_ended_by_user for roomAAAAAAAAAa:",
+          data.room_id,
+          data.astro_id,
+        );
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
-        removeUserFromQueue({ redis: redisClient, queueKey: `queue:${data.astro_id}`, roomId: data.room_id });
-         const response = await updateQueuePositions(
-            `queue:${data.astro_id}`,
-            redisClient,
-            pubClient,
+        removeUserFromQueue({
+          redis: redisClient,
+          queueKey: `queue:${data.astro_id}`,
+          roomId: data.room_id,
+        });
+        const response = await updateQueuePositions(
+          `queue:${data.astro_id}`,
+          redisClient,
+          pubClient,
+        );
+        if (response) {
+          console.log(
+            "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
           );
-          if (response) {
-            console.log(
-              "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
-            );
-            let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
-            if (queueLength > 0) {
-              setTimeout(async () => {
-                await processNextRequest(data.astro_id, redisClient, pubClient);
-              }, 5000);
-            }
+          let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
+          if (queueLength > 0) {
+            setTimeout(async () => {
+              await processNextRequest(data.astro_id, redisClient, pubClient);
+            }, 5000);
           }
+        }
       });
 
       /* =========================
@@ -706,7 +742,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-       onSafe("cancel_call_request", async (data) => {
+      onSafe("cancel_call_request", async (data) => {
         const res = await handleReject(
           data.room_id,
           prisma,
@@ -724,7 +760,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             }, 5000);
           }
         }
-        
 
         safePublish(pubClient, "call_cancel_by_user", {
           roomId: data.room_id,
@@ -762,7 +797,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       // });
 
       onSafe("autodisconnect", async (data) => {
-          console.log("Received autodisconnect event FROM USER SIDE :", data);
+        console.log("Received autodisconnect event FROM USER SIDE :", data);
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);
         try {
@@ -789,12 +824,14 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               console.log(
                 "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
               );
-              let queueLength = await pubClient.lLen(
-                `queue:${data.astroid}`,
-              );
+              let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
               if (queueLength > 0) {
                 setTimeout(async () => {
-                  await processNextRequest(data.astroid, redisClient, pubClient);
+                  await processNextRequest(
+                    data.astroid,
+                    redisClient,
+                    pubClient,
+                  );
                 }, 5000);
               }
             }

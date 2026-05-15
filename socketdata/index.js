@@ -313,18 +313,18 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               console.log("Received call_ended_by_astrologer message:", data);
               io.to(data.roomId).emit("call_ended_by_astrologer", data);
               finalizeCallSession(
-                data.room_id,
+                data.roomId,
                 prisma,
                 redisClient,
-                data.astro_id,
+                data.astroId,
               );
               removeUserFromQueue({
                 redis: redisClient,
-                queueKey: `queue:${data.astro_id}`,
-                roomId: data.room_id,
+                queueKey: `queue:${data.astroId}`,
+                roomId: data.roomId,
               });
               const response = await updateQueuePositions(
-                `queue:${data.astro_id}`,
+                `queue:${data.astroId}`,
                 redisClient,
                 pubClient,
               );
@@ -333,12 +333,12 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
                 );
                 let queueLength = await pubClient.lLen(
-                  `queue:${data.astro_id}`,
+                  `queue:${data.astroId}`,
                 );
                 if (queueLength > 0) {
                   setTimeout(async () => {
                     await processNextRequest(
-                      data.astro_id,
+                      data.astroId,
                       redisClient,
                       pubClient,
                     );

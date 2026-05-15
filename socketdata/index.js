@@ -527,12 +527,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           data.astro_id,
         );
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
-        removeUserFromQueue({
+        const removeUserFromQueue = await removeUserFromQueue({
           redis: redisClient,
           queueKey: `queue:${data.astro_id}`,
           roomId: data.room_id,
         });
-        const response = await updateQueuePositions(
+        if(removeUserFromQueue){
+          const response = await updateQueuePositions(
           `queue:${data.astro_id}`,
           redisClient,
           pubClient,
@@ -548,6 +549,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             }, 5000);
           }
         }
+        }
+        
       });
 
       /* =========================

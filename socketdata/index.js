@@ -15,7 +15,6 @@ import {
 import {
   handleAcceptCall,
   finalizeCallSession,
-  processNextCall,
   removeUserFromQueue,
 } from "../services/callService.js";
 

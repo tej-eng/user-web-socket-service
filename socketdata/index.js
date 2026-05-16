@@ -459,6 +459,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 callerId: data.user_id,
                 receiverId: astroId,
                 callTime: data.maximum_time,
+                userName:data.userName,
               }),
             );
           } else {

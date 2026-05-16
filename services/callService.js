@@ -230,26 +230,6 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
-// services/callService.js
-export const processNextCall = async (astroId, redis, pubClient) => {
-  console.log("comming in processNextCall");
-  const queueKey = `queue:${astroId}`;
-
-  const nextCall = await redis.lPop(queueKey);
-
-  if (!nextCall) return;
-
-  const parsed = JSON.parse(nextCall);
-
-  // mark active call
-  //await redis.set(`active_call:${astroId}`, parsed.room_id);
-
-  // notify both users
-  pubClient.publish("call_start", JSON.stringify({
-    roomId: parsed.room_id,
-    astroId
-  }));
-};
 
 
 export const removeUserFromQueue = async ({

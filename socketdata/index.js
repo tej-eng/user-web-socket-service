@@ -745,6 +745,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_call_request", async (data) => {
+        console.log("Received cancel_call_requestTTTTTTTTTTTTTT:", data);
         const res = await handleReject(
           data.room_id,
           prisma,

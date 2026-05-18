@@ -169,7 +169,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
             case "queue_update":
               console.log(
-                "Queue update received in socket handler:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuu",
+                "Queue update received in socket handler",
                 data,
               );
               io.to(data.roomId).emit("queue_position", data);

@@ -308,41 +308,54 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               console.log("Emitted answer to room:", data.room_id);
               break;
             case "call_ended_by_astrologer":
-              console.log("Received call_ended_by_astrologer message:", data);
-              io.to(data.roomId).emit("call_ended_by_astrologer", data);
-              finalizeCallSession(
-                data.roomId,
-                prisma,
-                redisClient,
-                data.astroId,
-              );
-              removeUserFromQueue({
-                redis: redisClient,
-                queueKey: `queue:${data.astroId}`,
-                roomId: data.roomId,
-              });
-              const response = await updateQueuePositions(
-                `queue:${data.astroId}`,
-                redisClient,
-                pubClient,
-              );
-              if (response) {
-                console.log(
-                  "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
-                );
-                let queueLength = await pubClient.lLen(
-                  `queue:${data.astroId}`,
-                );
-                if (queueLength > 0) {
-                  setTimeout(async () => {
-                    await processNextRequest(
-                      data.astroId,
-                      redisClient,
-                      pubClient,
-                    );
-                  }, 5000);
+                const lockKey = `queue_lock:${data.astroId}`;
+                const lock = await redisClient.set(lockKey, "1", "NX", "EX", 2);
+
+                if (!lock) return;
+
+                try {
+                await finalizeCallSession(data.roomId,prisma,redisClient,data.astroId);
+                await removeUserFromQueue(redisClient, `queue:${data.astroId}`, data.roomId);
+                await updateQueuePositions(redisClient, `queue:${data.astroId}`, data.roomId);
+                await processNextRequest(data.astroId, redisClient, pubClient);
+                } finally {
+                await redisClient.del(lockKey);
                 }
-              }
+              // console.log("Received call_ended_by_astrologer message:", data);
+              // io.to(data.roomId).emit("call_ended_by_astrologer", data);
+              // finalizeCallSession(
+              //   data.roomId,
+              //   prisma,
+              //   redisClient,
+              //   data.astroId,
+              // );
+              // removeUserFromQueue({
+              //   redis: redisClient,
+              //   queueKey: `queue:${data.astroId}`,
+              //   roomId: data.roomId,
+              // });
+              // const response = await updateQueuePositions(
+              //   `queue:${data.astroId}`,
+              //   redisClient,
+              //   pubClient,
+              // );
+              // if (response) {
+              //   console.log(
+              //     "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
+              //   );
+              //   let queueLength = await pubClient.lLen(
+              //     `queue:${data.astroId}`,
+              //   );
+              //   if (queueLength > 0) {
+              //     setTimeout(async () => {
+              //       await processNextRequest(
+              //         data.astroId,
+              //         redisClient,
+              //         pubClient,
+              //       );
+              //     }, 5000);
+              //   }
+              // }
               break;
             case "call_cancel_by_astrologer":
               console.log("Received call_cancel_by_astrologer message:", data);

@@ -315,7 +315,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
                 try {
                 await finalizeCallSession(data.roomId,prisma,redisClient,data.astroId);
-                await removeUserFromQueue(redisClient, `queue:${data.astroId}`, data.roomId);
+                await removeUserFromQueue({redis: redisClient, queueKey: `queue:${data.astroId}`, roomId: data.roomId});
                 await updateQueuePositions(redisClient, `queue:${data.astroId}`, data.roomId);
                 await processNextRequest(data.astroId, redisClient, pubClient);
                 } finally {

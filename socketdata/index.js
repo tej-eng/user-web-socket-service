@@ -314,6 +314,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 if (!lock) return;
 
                 try {
+                  io.to(data.roomId).emit("call_ended_by_astrologer", data);
                 await finalizeCallSession(data.roomId,prisma,redisClient,data.astroId);
                 await removeUserFromQueue({redis: redisClient, queueKey: `queue:${data.astroId}`, roomId: data.roomId});
                 await updateQueuePositions(redisClient, `queue:${data.astroId}`, data.roomId);

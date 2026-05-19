@@ -255,9 +255,9 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 export const processNextRequest = async (astrologerId, redis, pubClient) => {
   try {
     const queueKey = `queue:${astrologerId}`;
-    //const queueItem = await redis.lIndex(queueKey, 0);
-    const queueList = await redis.lRange(queueKey, 0, -1);
-    const queueItem = queueList[0];
+    const queueItem = await redis.lIndex(queueKey, 0);
+    //const queueList = await redis.lrange(queueKey, 0, -1);
+    //const queueItem = queueList[0];
     console.log("Next queue item for astrologer AAAAAAAAAAAAAAAAAAAAAAA", astrologerId, queueItem);
     if (!queueItem) return null;
     const parsedQueue = JSON.parse(queueItem);

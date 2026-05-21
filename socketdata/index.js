@@ -120,6 +120,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                     redisClient,
                     pubClient,
                   );
+                  console.log(
+                    "Chat accepted by astrologer, result of handling acceptance:",
+                    result,
+                  );
                   if (result) {
                     io.emit("chatAcceptedByAstrologer", data);
                   }
@@ -128,6 +132,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
+                console.log("Chat rejected by astrologer:", data);
                 await handleReject(data.roomid, prisma, redisClient, pubClient);
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);

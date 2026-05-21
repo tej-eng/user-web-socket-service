@@ -8,6 +8,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   const astrologer = await prisma.astrologer.findUnique({
     where: { id: intake.astrologerId },
   });
+  console.log("Astrologer details for accepted chat:", astrologer);
 
   if (!astrologer) throw new Error("Astrologer not found");
 

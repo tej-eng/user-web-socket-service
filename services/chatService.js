@@ -6,22 +6,33 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   if (!intake) throw new Error("Chat request not found");
 
   const astrologer = await prisma.astrologer.findUnique({
-    where: { id: intake.astrologerId },
-  });
+  where: { id: intake.astrologerId },
+  include: {
+    pricing: true,
+  },
+});
   console.log("Astrologer details for accepted chat:", astrologer);
 
   if (!astrologer) throw new Error("Astrologer not found");
 
+  const chatPricing = astrologer.pricing.find(
+  (p) => p.type === "CHAT" && p.isActive
+);
+
+if (!chatPricing) {
+  throw new Error("CHAT pricing not configured");
+}
+
   const session = await prisma.session.create({
-    data: {
-      userId: intake.userId,
-      astrologerId: intake.astrologerId,
-      type: "CHAT",
-      status: "ONGOING",
-      ratePerMin: Math.round(astrologer.price),
-      startedAt: new Date(),
-    },
-  });
+  data: {
+    userId: intake.userId,
+    astrologerId: intake.astrologerId,
+    type: "CHAT",
+    status: "ONGOING",
+    ratePerMin: Math.round(chatPricing.offerPrice || chatPricing.price),
+    startedAt: new Date(),
+  },
+});
   const queueKey = `queue:${intake.astrologerId}`;
   //await updateQueuePositions(queueKey, redis, pubClient);
 

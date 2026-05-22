@@ -6,22 +6,34 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
   if (!intake) throw new Error("Call request not found");
 
-  const astrologer = await prisma.astrologer.findUnique({
-    where: { id: intake.astrologerId },
-  });
- console.log("Astrologer details for roomId:222222222222", roomId, "Astrologer:", astrologer);
+ const astrologer = await prisma.astrologer.findUnique({
+  where: { id: intake.astrologerId },
+  include: {
+    pricing: true,
+  },
+});
+  console.log("Astrologer details for accepted call:", astrologer);
+
   if (!astrologer) throw new Error("Astrologer not found");
 
+  const callPricing = astrologer.pricing.find(
+  (p) => p.type === "CALL" && p.isActive
+);
+
+if (!callPricing) {
+  throw new Error("CALL pricing not configured");
+}
+
   const session = await prisma.session.create({
-    data: {
-      userId: intake.userId,
-      astrologerId: intake.astrologerId,
-      type: "CALL",
-      status: "ONGOING",
-      ratePerMin: Math.round(astrologer.price),
-      startedAt: new Date(),
-    },
-  });
+  data: {
+    userId: intake.userId,
+    astrologerId: intake.astrologerId,
+    type: "CALL",
+    status: "ONGOING",
+    ratePerMin: Math.round(callPricing.offerPrice || callPricing.price),
+    startedAt: new Date(),
+  },
+});
   console.log("Created session for roomId:333333333333", roomId, "Session:", session);
 
   const queueKey = `queue:${intake.astrologerId}`;

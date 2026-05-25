@@ -68,28 +68,95 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
     /* =========================
         GET ALL MESSAGES FROM REDIS
     ========================= */
-    const messages = await redis.lRange(`chat_messages:${roomId}`, 0, -1);
+   /* =========================
+   GET ALL MESSAGES FROM REDIS
+========================= */
+const messages = await redis.lRange(`chat_messages:${roomId}`, 0, -1);
 
-    const parsedMessages = messages.map((m) => JSON.parse(m));
+const parsedMessages = messages.map((m) => JSON.parse(m));
 
-    /* =========================
-       SAVE TO DB (BULK)
-    ========================= */
-    if (parsedMessages.length > 0) {
-      await prisma.message.createMany({
-        data: parsedMessages.map((msg) => ({
-          msgId: msg.msg_id,
-          roomId: msg.room_id,
-          senderId: msg.sender_id,
-          receiverId: msg.received_id,
-          message: msg.message,
-          image: msg.image,
-          sender: msg.sender,
-          replyTo: msg.replyTo,
-        })),
-        skipDuplicates: true,
-      });
-    }
+/* =========================
+   FRAUD DETECTION LOGIC
+========================= */
+
+// Get all fraud keywords
+const fraudFlags = await prisma.fraudFlag.findMany({
+  select: {
+    keyword: true,
+  },
+});
+
+const fraudKeywords = fraudFlags.map((f) =>
+  f.keyword.toLowerCase().trim()
+);
+
+// Store fraud logs here
+const fraudLogs = [];
+
+for (const msg of parsedMessages) {
+  if (!msg.message) continue;
+
+  const messageText = msg.message.toLowerCase();
+
+  // Match keywords
+  const matchedKeywords = fraudKeywords.filter((keyword) =>
+    messageText.includes(keyword)
+  );
+
+  // If any keyword matched
+  if (matchedKeywords.length > 0) {
+    fraudLogs.push({
+      orderId: msg.msg_id,
+      sessionId: msg.session_id || null,
+
+      senderId: msg.sender_id || null,
+      senderName: msg.sender || null,
+
+      receiverId: msg.received_id || null,
+      receiverName: null,
+
+      message: msg.message,
+
+      matchedKeywords,
+
+      status: "PENDING",
+    });
+  }
+}
+
+/* =========================
+   SAVE MESSAGES
+========================= */
+if (parsedMessages.length > 0) {
+  await prisma.message.createMany({
+    data: parsedMessages.map((msg) => ({
+      msgId: msg.msg_id,
+      roomId: msg.room_id,
+      senderId: msg.sender_id,
+      receiverId: msg.received_id,
+      message: msg.message,
+      image: msg.image,
+      sender: msg.sender,
+      replyTo: msg.replyTo,
+      sessionId: msg.session_id || null,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+/* =========================
+   SAVE FRAUD LOGS
+========================= */
+if (fraudLogs.length > 0) {
+  await prisma.fraudLog.createMany({
+    data: fraudLogs,
+    skipDuplicates: true,
+  });
+
+  console.log(
+    `🚨 Fraud messages detected: ${fraudLogs.length}`
+  );
+}
 
     /* =========================
        DELETE REDIS CHAT LIST

@@ -167,7 +167,7 @@ model Review {
   user   User   @relation(fields: [userId], references: [id])
 
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   sessionId String?  @unique
   session   Session? @relation(fields: [sessionId], references: [id])
@@ -201,7 +201,7 @@ model Intake {
   createdAt    DateTime @default(now())
 
   user       User       @relation(fields: [userId], references: [id])
-  astrologer Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([astrologerId])
@@ -283,7 +283,7 @@ model AstrologerApproved {
 model Address {
   id           Int        @id @default(autoincrement())
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   street  String
   city    String
@@ -299,7 +299,7 @@ model Address {
 model ExperiencePlatform {
   id           Int        @id @default(autoincrement())
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   platformName String
   yearsWorked  Int
@@ -311,7 +311,7 @@ model ExperiencePlatform {
 model Interview {
   id           Int        @id @default(autoincrement())
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   roundNumber     Int
   interviewerName String
@@ -331,7 +331,7 @@ model Interview {
 model AstrologerDocument {
   id           Int        @id @default(autoincrement())
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   documentType DocumentType
   documentUrl  String
@@ -350,7 +350,7 @@ model AstrologerDocument {
 model AstrologerRejectionHistory {
   id           Int        @id @default(autoincrement())
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   stage      RejectionStage
   reason     String
@@ -610,14 +610,13 @@ model UserWallet {
 model AstrologerWallet {
   id             String       @id @default(uuid())
   astrologerId   String       @unique
-  astrologer     Astrologer   @relation(fields: [astrologerId], references: [id])
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
   balanceCoins   Float        @default(0)
   totalEarned    Int          @default(0)
   totalWithdrawn Int          @default(0)
   withdrawals    Withdrawal[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-
   transactions WalletTransaction[]
 
   @@index([astrologerId])
@@ -685,7 +684,7 @@ model Session {
   user   User   @relation(fields: [userId], references: [id])
 
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id])
+ astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   type   SessionType
   status SessionStatus
@@ -702,7 +701,7 @@ model Session {
   messages      Message[]
   createdAt     DateTime            @default(now())
   transactions  WalletTransaction[]
-
+  fraudLogs FraudLog[] 
   @@index([userId])
   @@index([astrologerId])
   @@index([status])
@@ -925,7 +924,54 @@ model AstrologerPricing {
   commissionPercent Float?
   isActive          Boolean     @default(true)
 
-  astrologer Astrologer @relation(fields: [astrologerId], references: [id])
+ astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   @@unique([astrologerId, type])
+}
+
+model FraudFlag {
+  id String @id @default(uuid())
+
+  keyword String @unique
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([keyword])
+}
+enum FraudStatus {
+  PENDING
+  FRAUD
+  FINE
+}
+
+model FraudLog {
+  id String @id @default(uuid())
+
+  orderId String?
+
+  sessionId String?
+  session   Session? @relation(fields: [sessionId], references: [id])
+
+  senderId String?
+  senderName String?
+
+  receiverId String?
+  receiverName String?
+
+  message String @db.Text
+
+  matchedKeywords String[]
+
+  status FraudStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
+  @@index([createdAt])
 }

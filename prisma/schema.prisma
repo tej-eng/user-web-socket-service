@@ -164,24 +164,37 @@ model Review {
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 
   astrologerId String
   astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
-  sessionId String?  @unique
+  sessionId String? @unique
   session   Session? @relation(fields: [sessionId], references: [id])
 
-  rating  Int
+  rating Int
+
   comment String?
 
-  userName  String?
+  reply String?
+
+  isFlagged Boolean @default(false)
+
+  userName String?
+
   astroName String?
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
   @@index([userId])
+
   @@index([astrologerId])
+
+  @@index([rating])
+
+  @@index([createdAt])
 }
 
 model Intake {
@@ -249,8 +262,6 @@ model Astrologer {
   createdBy  Staff?     @relation("CreatedAstrologers", fields: [createdById], references: [id])
   kycDetail  KycDetail?
 
-  //kyc KycDetail? @relation(fields: [kycDetailId], references: [id])
-
   intakes          Intake[]
   addresses        Address[]
   experiences      ExperiencePlatform[]
@@ -262,6 +273,7 @@ model Astrologer {
   reviews          Review[]
   pricing          AstrologerPricing[]
   applications     AstrologerApplication[]
+  offers AstrologerOffer[]
 
   @@index([rating])
   @@index([experience])
@@ -681,10 +693,10 @@ model Session {
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 
   astrologerId String
- astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
+  astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   type   SessionType
   status SessionStatus
@@ -692,16 +704,24 @@ model Session {
   ratePerMin  Int
   durationSec Int @default(0)
 
-  coinsDeducted Int                 @default(0)
-  coinsEarned   Int                 @default(0)
-  commission    Int                 @default(0)
+  coinsDeducted Int @default(0)
+  coinsEarned   Int @default(0)
+  commission    Int @default(0)
+
   review        Review?
   startedAt     DateTime?
   endedAt       DateTime?
+
   messages      Message[]
-  createdAt     DateTime            @default(now())
+
   transactions  WalletTransaction[]
-  fraudLogs FraudLog[] 
+
+  fraudLogs     FraudLog[]
+
+  remedies      SessionRemedy[]   
+
+  createdAt     DateTime @default(now())
+
   @@index([userId])
   @@index([astrologerId])
   @@index([status])
@@ -869,13 +889,14 @@ model KycDetail {
   aadhaarImage  String?
   panImage      String?
   passbookImage String?
-
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
   status DocumentStatus @default(PENDING)
 
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  astrologerId String?     @unique
-  astrologer   Astrologer? @relation(fields: [astrologerId], references: [id])
+  astrologerId String     @unique
+   
+
 }
 
 model Notification {
@@ -974,4 +995,220 @@ model FraudLog {
   @@index([receiverId])
   @@index([status])
   @@index([createdAt])
+}
+
+
+// --------------------------------------------------------------------------
+enum CmsStatus {
+  DRAFT
+  PUBLISHED
+}
+model AboutPage {
+  id String @id @default(uuid())
+
+  pageType String @default("about-us")
+
+  heroTitle String?
+
+  heroDescription String? @db.Text
+
+  mentors Json?
+
+  founders Json?
+
+  metaTitle String?
+  metaDescription String?
+  keywords String[]
+
+  status CmsStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageType])
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PrivacyPage {
+  id String @id @default(uuid())
+
+  pageType String @default("privacy-policy")
+
+  title String?
+
+  content String? @db.Text
+
+  metaTitle String?
+  metaDescription String?
+
+  keywords String[]
+
+  status CmsStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageType])
+
+  @@index([status])
+  @@index([createdAt])
+}
+model RefundPolicyPage {
+  id String @id @default(uuid())
+
+  pageType String @default("refund-policy")
+
+  title String?
+
+  content String? @db.Text
+
+  metaTitle String?
+  metaDescription String?
+
+  keywords String[]
+
+  status CmsStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageType])
+
+  @@index([status])
+  @@index([createdAt])
+}
+model DisclaimerPage {
+  id String @id @default(uuid())
+
+  pageType String @default("disclaimer")
+
+  title String?
+
+  content String? @db.Text
+
+  metaTitle String?
+  metaDescription String?
+
+  keywords String[]
+
+  status CmsStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageType])
+
+  @@index([status])
+  @@index([createdAt])
+}
+model Remedy {
+  id          String   @id @default(uuid())
+
+  title       String
+  description String   @db.Text
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+ // sessions    Session[]
+
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+enum PlatformType {
+  ANDROID
+  IOS
+}
+
+model AppVersion {
+  id String @id @default(uuid())
+
+  platform PlatformType
+
+  latestVersion String
+  minimumVersion String
+
+  forceUpdate Boolean @default(false)
+
+  maintenanceMode Boolean @default(false)
+
+  maintenanceMessage String?
+
+  playStoreUrl String?
+  appStoreUrl String?
+
+  releaseNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FreeService {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  href        String
+  icon        String
+
+  isActive    Boolean  @default(true)
+
+  order       Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Offer {
+  id          String   @id @default(uuid())
+  offerName   String
+  price       Float
+  description String?
+  isActive    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  astrologerOffers AstrologerOffer[]
+}
+
+model SessionRemedy {
+  id          String   @id @default(uuid())
+
+  sessionId   String
+
+  remedyText  String   @db.Text
+
+  createdAt   DateTime @default(now())
+
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model AstrologerOffer {
+  id           String @id @default(uuid())
+
+  astrologerId String
+  offerId      String
+
+  isActive     Boolean @default(false)
+
+  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
+
+  offer        Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([astrologerId, offerId])
+
+  @@index([astrologerId])
+  @@index([offerId])
+  @@index([isActive])
 }

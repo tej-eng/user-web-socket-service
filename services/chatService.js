@@ -1,44 +1,95 @@
-export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
+export const handleAcceptChat = async (
+  roomId,
+  prisma,
+  redis,
+  pubClient
+) => {
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId },
   });
 
-  if (!intake) throw new Error("Chat request not found");
+  if (!intake) {
+    throw new Error("Chat request not found");
+  }
 
   const astrologer = await prisma.astrologer.findUnique({
-  where: { id: intake.astrologerId },
-  include: {
-    pricing: true,
-  },
-});
-  console.log("Astrologer details for accepted chat:", astrologer);
+    where: {
+      id: intake.astrologerId,
+    },
+    include: {
+      pricing: {
+        where: {
+          type: "CHAT",
+          isActive: true,
+        },
+      },
+    },
+  });
 
-  if (!astrologer) throw new Error("Astrologer not found");
+  if (!astrologer) {
+    throw new Error("Astrologer not found");
+  }
 
   const chatPricing = astrologer.pricing.find(
-  (p) => p.type === "CHAT" && p.isActive
-);
+    (p) => p.type === "CHAT"
+  );
 
-if (!chatPricing) {
-  throw new Error("CHAT pricing not configured");
-}
+  if (!chatPricing) {
+    throw new Error("CHAT pricing not configured");
+  }
+
+  // Default rate from pricing table
+  let ratePerMin = Math.round(
+    chatPricing.offerPrice || chatPricing.price
+  );
+
+  // Check astrologer's active offer
+  const activeOffer = await prisma.astrologerOffer.findFirst({
+    where: {
+      astrologerId: intake.astrologerId,
+      isActive: true,
+    },
+    include: {
+      offer: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+
+  if (activeOffer && activeOffer.offer) {
+    ratePerMin = Math.round(activeOffer.offer.price);
+    console.log(
+      "Active offer found:",
+      activeOffer.offer.offerName,
+      "Offer Price:",
+      ratePerMin
+    );
+  } else {
+    console.log(
+      "No active offer found. Using pricing:",
+      ratePerMin
+    );
+  }
 
   const session = await prisma.session.create({
-  data: {
-    userId: intake.userId,
-    astrologerId: intake.astrologerId,
-    type: "CHAT",
-    status: "ONGOING",
-    ratePerMin: Math.round(chatPricing.offerPrice || chatPricing.price),
-    startedAt: new Date(),
-  },
-});
-  const queueKey = `queue:${intake.astrologerId}`;
-  //await updateQueuePositions(queueKey, redis, pubClient);
+    data: {
+      userId: intake.userId,
+      astrologerId: intake.astrologerId,
+      type: "CHAT",
+      status: "ONGOING",
+      ratePerMin,
+      startedAt: new Date(),
+    },
+  });
 
-  //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+
+  multi.sRem(
+    `user_in_queue:${intake.astrologerId}`,
+    intake.userId
+  );
+
   multi.set(
     `active_chat:${roomId}`,
     JSON.stringify({
@@ -47,12 +98,13 @@ if (!chatPricing) {
       astrologerId: intake.astrologerId,
       startTime: Date.now(),
     }),
-    { EX: 3600 },
+    { EX: 3600 }
   );
+
   multi.set(
-    `current_chat:${intake.astrologerId}`, //for testing
+    `current_chat:${intake.astrologerId}`,
     roomId,
-    { EX: 3600 },
+    { EX: 3600 }
   );
 
   multi.del(`request_data:${roomId}`);

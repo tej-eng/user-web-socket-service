@@ -38,39 +38,152 @@ export const handleAcceptChat = async (
     throw new Error("CHAT pricing not configured");
   }
 
-  // Default rate from pricing table
+  // -----------------------------------
+  // GET USER OFFER USAGE
+  // -----------------------------------
+
+  let userOfferUsage =
+    await prisma.userOfferUsage.findUnique({
+      where: {
+        userId: intake.userId,
+      },
+    });
+
+  if (!userOfferUsage) {
+    userOfferUsage =
+      await prisma.userOfferUsage.create({
+        data: {
+          userId: intake.userId,
+        },
+      });
+  }
+
+  // -----------------------------------
+  // GET GLOBAL PRICING CONFIG
+  // -----------------------------------
+
+  const pricingConfig =
+    await prisma.pricingConfig.findFirst();
+
+  // -----------------------------------
+  // GET ACTIVE ASTROLOGER OFFER
+  // -----------------------------------
+
+  const activeOffer =
+    await prisma.astrologerOffer.findFirst({
+      where: {
+        astrologerId: intake.astrologerId,
+        isActive: true,
+      },
+      include: {
+        offer: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+  // -----------------------------------
+  // PRICE PRIORITY LOGIC
+  // -----------------------------------
+
   let ratePerMin = Math.round(
-    chatPricing.offerPrice || chatPricing.price
+    chatPricing.price
   );
 
-  // Check astrologer's active offer
-  const activeOffer = await prisma.astrologerOffer.findFirst({
-    where: {
-      astrologerId: intake.astrologerId,
-      isActive: true,
-    },
-    include: {
-      offer: true,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-  });
+  let appliedOffer = "NORMAL";
 
-  if (activeOffer && activeOffer.offer) {
-    ratePerMin = Math.round(activeOffer.offer.price);
-    console.log(
-      "Active offer found:",
-      activeOffer.offer.offerName,
-      "Offer Price:",
-      ratePerMin
+  /**
+   * FIRST TIME OFFER
+   */
+  if (
+    pricingConfig?.isFirstOfferEnabled &&
+    !userOfferUsage.firstOfferUsedAt
+  ) {
+    ratePerMin = Number(
+      pricingConfig.firstChatPrice
     );
-  } else {
+
+    appliedOffer = "FIRST_TIME_OFFER";
+
     console.log(
-      "No active offer found. Using pricing:",
+      "Applying FIRST_TIME_OFFER:",
       ratePerMin
     );
   }
+
+  /**
+   * SECOND TIME OFFER
+   */
+  else if (
+    pricingConfig?.isSecondOfferEnabled &&
+    !userOfferUsage.secondOfferUsedAt
+  ) {
+    ratePerMin = Number(
+      pricingConfig.secondChatPrice
+    );
+
+    appliedOffer = "SECOND_TIME_OFFER";
+
+    console.log(
+      "Applying SECOND_TIME_OFFER:",
+      ratePerMin
+    );
+  }
+
+  /**
+   * ASTROLOGER SPECIAL OFFER
+   */
+  else if (
+    activeOffer?.offer &&
+    Number(activeOffer.offer.price) > 0
+  ) {
+    ratePerMin = Number(
+      activeOffer.offer.price
+    );
+
+    appliedOffer =
+      "ASTROLOGER_SPECIAL_OFFER";
+
+    console.log(
+      "Applying ASTROLOGER_SPECIAL_OFFER:",
+      ratePerMin
+    );
+  }
+
+  /**
+   * ASTROLOGER OFFER PRICE
+   */
+  else if (
+    chatPricing.offerPrice &&
+    Number(chatPricing.offerPrice) > 0
+  ) {
+    ratePerMin = Number(
+      chatPricing.offerPrice
+    );
+
+    appliedOffer =
+      "ASTROLOGER_OFFER_PRICE";
+
+    console.log(
+      "Applying ASTROLOGER_OFFER_PRICE:",
+      ratePerMin
+    );
+  }
+
+  console.log(
+    "Final Rate Per Min:",
+    ratePerMin
+  );
+
+  console.log(
+    "Applied Offer:",
+    appliedOffer
+  );
+
+  // -----------------------------------
+  // CREATE SESSION
+  // -----------------------------------
 
   const session = await prisma.session.create({
     data: {
@@ -82,6 +195,43 @@ export const handleAcceptChat = async (
       startedAt: new Date(),
     },
   });
+
+  // -----------------------------------
+  // RESERVE OFFER IMMEDIATELY
+  // PREVENT MULTIPLE CHATS USING SAME OFFER
+  // -----------------------------------
+
+  if (
+    appliedOffer === "FIRST_TIME_OFFER"
+  ) {
+    await prisma.userOfferUsage.update({
+      where: {
+        userId: intake.userId,
+      },
+      data: {
+        firstOfferUsedAt: new Date(),
+        usedFirst: true,
+      },
+    });
+  }
+
+  if (
+    appliedOffer === "SECOND_TIME_OFFER"
+  ) {
+    await prisma.userOfferUsage.update({
+      where: {
+        userId: intake.userId,
+      },
+      data: {
+        secondOfferUsedAt: new Date(),
+        usedSecond: true,
+      },
+    });
+  }
+
+  // -----------------------------------
+  // REDIS
+  // -----------------------------------
 
   const multi = redis.multi();
 
@@ -97,6 +247,8 @@ export const handleAcceptChat = async (
       userId: intake.userId,
       astrologerId: intake.astrologerId,
       startTime: Date.now(),
+      appliedOffer,
+      ratePerMin,
     }),
     { EX: 3600 }
   );
@@ -113,6 +265,8 @@ export const handleAcceptChat = async (
 
   return session;
 };
+
+
 export const finalizeChatSession = async (
   roomId,
   prisma,

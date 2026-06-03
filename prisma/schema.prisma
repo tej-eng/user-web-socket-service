@@ -215,6 +215,8 @@ model Intake {
 
   user       User       @relation(fields: [userId], references: [id])
   astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
+  appliedOffer String?
+  pricePerMin Float?
 
   @@index([userId])
   @@index([astrologerId])
@@ -928,6 +930,9 @@ model UserOfferUsage {
   userId String @unique
 
   visitCount Int @default(0)
+
+  firstOfferUsedAt DateTime?
+  secondOfferUsedAt DateTime?
 
   usedFirst  Boolean @default(false)
   usedSecond Boolean @default(false)

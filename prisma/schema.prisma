@@ -922,7 +922,7 @@ model PricingConfig {
   firstChatPrice      Int     @default(0)
   firstCallPrice      Int     @default(0)
 
-  isSecondOfferEnabled Boolean @default(false)
+  isSecondOfferEnabled Boolean @default(true)
   secondChatPrice      Int     @default(0)
   secondCallPrice      Int     @default(0)
 }

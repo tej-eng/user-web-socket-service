@@ -712,6 +712,44 @@ export const finalizeChatSession = async (
               commission,
             },
           });
+
+          //update  PricingConfig usage count
+          const pricingConfig =
+            await tx.pricingConfig.findFirst();
+
+          if (
+            pricingConfig &&
+            pricingConfig.isFirstOfferEnabled
+          ) {
+            await tx.pricingConfig.update({
+              where: {
+                id: pricingConfig.id,
+              },
+
+              data: {
+                firstOfferUsageCount: {
+                  increment: 1,
+                },
+              },
+            });
+          }
+
+          if (
+            pricingConfig &&
+            pricingConfig.isSecondOfferEnabled
+          ) {
+            await tx.pricingConfig.update({
+              where: {
+                id: pricingConfig.id,
+              },
+
+              data: {
+                secondOfferUsageCount: {
+                  increment: 1,
+                },
+              },
+            });
+          }
         }
       );
 

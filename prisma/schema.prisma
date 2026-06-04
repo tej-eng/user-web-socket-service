@@ -917,12 +917,15 @@ model Notification {
 
 model PricingConfig {
   id String @id @default(uuid())
+  isGlobalOfferEnabled Boolean @default(false)
+  globalChatPrice      Int     @default(0)
+  globalCallPrice      Int     @default(0)
 
-  isFirstOfferEnabled Boolean @default(true)
+  isFirstOfferEnabled Boolean @default(false)
   firstChatPrice      Int     @default(0)
   firstCallPrice      Int     @default(0)
 
-  isSecondOfferEnabled Boolean @default(true)
+  isSecondOfferEnabled Boolean @default(false)
   secondChatPrice      Int     @default(0)
   secondCallPrice      Int     @default(0)
 }

@@ -82,104 +82,117 @@ export const handleAcceptChat = async (
         updatedAt: "desc",
       },
     });
+// -----------------------------------
+// PRICE PRIORITY LOGIC
+// -----------------------------------
 
-  // -----------------------------------
-  // PRICE PRIORITY LOGIC
-  // -----------------------------------
+let ratePerMin = Math.round(chatPricing.price);
 
-  let ratePerMin = Math.round(
-    chatPricing.price
-  );
+let appliedOffer = "NORMAL";
 
-  let appliedOffer = "NORMAL";
+/**
+ * FIRST TIME OFFER
+ */
+if (
+  pricingConfig?.isFirstOfferEnabled &&
+  !userOfferUsage.firstOfferUsedAt
+) {
+  ratePerMin = Number(pricingConfig.firstChatPrice);
 
-  /**
-   * FIRST TIME OFFER
-   */
-  if (
-    pricingConfig?.isFirstOfferEnabled &&
-    !userOfferUsage.firstOfferUsedAt
-  ) {
-    ratePerMin = Number(
-      pricingConfig.firstChatPrice
-    );
-
-    appliedOffer = "FIRST_TIME_OFFER";
-
-    console.log(
-      "Applying FIRST_TIME_OFFER:",
-      ratePerMin
-    );
-  }
-
-  /**
-   * SECOND TIME OFFER
-   */
-  else if (
-    pricingConfig?.isSecondOfferEnabled &&
-    !userOfferUsage.secondOfferUsedAt
-  ) {
-    ratePerMin = Number(
-      pricingConfig.secondChatPrice
-    );
-
-    appliedOffer = "SECOND_TIME_OFFER";
-
-    console.log(
-      "Applying SECOND_TIME_OFFER:",
-      ratePerMin
-    );
-  }
-
-  /**
-   * ASTROLOGER SPECIAL OFFER
-   */
-  else if (
-    activeOffer?.offer &&
-    Number(activeOffer.offer.price) > 0
-  ) {
-    ratePerMin = Number(
-      activeOffer.offer.price
-    );
-
-    appliedOffer =
-      "ASTROLOGER_SPECIAL_OFFER";
-
-    console.log(
-      "Applying ASTROLOGER_SPECIAL_OFFER:",
-      ratePerMin
-    );
-  }
-
-  /**
-   * ASTROLOGER OFFER PRICE
-   */
-  else if (
-    chatPricing.offerPrice &&
-    Number(chatPricing.offerPrice) > 0
-  ) {
-    ratePerMin = Number(
-      chatPricing.offerPrice
-    );
-
-    appliedOffer =
-      "ASTROLOGER_OFFER_PRICE";
-
-    console.log(
-      "Applying ASTROLOGER_OFFER_PRICE:",
-      ratePerMin
-    );
-  }
+  appliedOffer = "FIRST_TIME_OFFER";
 
   console.log(
-    "Final Rate Per Min:",
+    "Applying FIRST_TIME_OFFER:",
     ratePerMin
   );
+}
+
+/**
+ * SECOND TIME OFFER
+ */
+else if (
+  pricingConfig?.isSecondOfferEnabled &&
+  !userOfferUsage.secondOfferUsedAt
+) {
+  ratePerMin = Number(pricingConfig.secondChatPrice);
+
+  appliedOffer = "SECOND_TIME_OFFER";
 
   console.log(
-    "Applied Offer:",
-    appliedOffer
+    "Applying SECOND_TIME_OFFER:",
+    ratePerMin
   );
+}
+
+/**
+ * GLOBAL OFFER
+ */
+else if (
+  pricingConfig?.isGlobalOfferEnabled
+) {
+  ratePerMin = Number(
+    pricingConfig.globalChatPrice
+  );
+
+  appliedOffer = "GLOBAL_OFFER";
+
+  console.log(
+    "Applying GLOBAL_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * ASTROLOGER SPECIAL OFFER
+ * (Birthday / Diwali / New Year etc)
+ */
+else if (
+  activeOffer?.offer &&
+  activeOffer.offer.isActive &&
+  Number(activeOffer.offer.price) > 0
+) {
+  ratePerMin = Number(
+    activeOffer.offer.price
+  );
+
+  appliedOffer =
+    "ASTROLOGER_SPECIAL_OFFER";
+
+  console.log(
+    "Applying ASTROLOGER_SPECIAL_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * ASTROLOGER OFFER PRICE
+ */
+else if (
+  chatPricing.offerPrice &&
+  Number(chatPricing.offerPrice) > 0
+) {
+  ratePerMin = Number(
+    chatPricing.offerPrice
+  );
+
+  appliedOffer =
+    "ASTROLOGER_OFFER_PRICE";
+
+  console.log(
+    "Applying ASTROLOGER_OFFER_PRICE:",
+    ratePerMin
+  );
+}
+
+console.log(
+  "Final Rate Per Min:",
+  ratePerMin
+);
+
+console.log(
+  "Applied Offer:",
+  appliedOffer
+);
 
   // -----------------------------------
   // CREATE SESSION

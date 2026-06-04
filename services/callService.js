@@ -24,17 +24,217 @@ if (!callPricing) {
   throw new Error("CALL pricing not configured");
 }
 
-  const session = await prisma.session.create({
+// -----------------------------------
+// GET USER OFFER USAGE
+// -----------------------------------
+
+let userOfferUsage =
+  await prisma.userOfferUsage.findUnique({
+    where: {
+      userId: intake.userId,
+    },
+  });
+
+if (!userOfferUsage) {
+  userOfferUsage =
+    await prisma.userOfferUsage.create({
+      data: {
+        userId: intake.userId,
+      },
+    });
+}
+
+// -----------------------------------
+// GET GLOBAL PRICING CONFIG
+// -----------------------------------
+
+const pricingConfig =
+  await prisma.pricingConfig.findFirst();
+
+// -----------------------------------
+// GET ACTIVE ASTROLOGER OFFER
+// -----------------------------------
+
+const activeOffer =
+  await prisma.astrologerOffer.findFirst({
+    where: {
+      astrologerId: intake.astrologerId,
+      isActive: true,
+    },
+    include: {
+      offer: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+
+// -----------------------------------
+// PRICE PRIORITY LOGIC
+// -----------------------------------
+
+let ratePerMin = Math.round(
+  Number(callPricing.price)
+);
+
+let appliedOffer = "NORMAL";
+
+/**
+ * FIRST TIME OFFER
+ */
+if (
+  pricingConfig?.isFirstOfferEnabled &&
+  !userOfferUsage.firstOfferUsedAt
+) {
+  ratePerMin = Number(
+    pricingConfig.firstCallPrice
+  );
+
+  appliedOffer = "FIRST_TIME_OFFER";
+
+  console.log(
+    "Applying FIRST_TIME_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * SECOND TIME OFFER
+ */
+else if (
+  pricingConfig?.isSecondOfferEnabled &&
+  !userOfferUsage.secondOfferUsedAt
+) {
+  ratePerMin = Number(
+    pricingConfig.secondCallPrice
+  );
+
+  appliedOffer = "SECOND_TIME_OFFER";
+
+  console.log(
+    "Applying SECOND_TIME_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * GLOBAL OFFER
+ */
+else if (
+  pricingConfig?.isGlobalOfferEnabled
+) {
+  ratePerMin = Number(
+    pricingConfig.globalCallPrice
+  );
+
+  appliedOffer = "GLOBAL_OFFER";
+
+  console.log(
+    "Applying GLOBAL_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * ASTROLOGER SPECIAL OFFER
+ * Birthday / Diwali / New Year
+ */
+else if (
+  activeOffer?.offer &&
+  activeOffer.offer.isActive &&
+  Number(activeOffer.offer.price) > 0
+) {
+  ratePerMin = Number(
+    activeOffer.offer.price
+  );
+
+  appliedOffer =
+    "ASTROLOGER_SPECIAL_OFFER";
+
+  console.log(
+    "Applying ASTROLOGER_SPECIAL_OFFER:",
+    ratePerMin
+  );
+}
+
+/**
+ * ASTROLOGER OFFER PRICE
+ */
+else if (
+  callPricing.offerPrice &&
+  Number(callPricing.offerPrice) > 0
+) {
+  ratePerMin = Number(
+    callPricing.offerPrice
+  );
+
+  appliedOffer =
+    "ASTROLOGER_OFFER_PRICE";
+
+  console.log(
+    "Applying ASTROLOGER_OFFER_PRICE:",
+    ratePerMin
+  );
+}
+
+console.log(
+  "Final Rate Per Min:",
+  ratePerMin
+);
+
+console.log(
+  "Applied Offer:",
+  appliedOffer
+);
+
+// -----------------------------------
+// CREATE SESSION
+// -----------------------------------
+
+const session = await prisma.session.create({
   data: {
     userId: intake.userId,
     astrologerId: intake.astrologerId,
     type: "CALL",
     status: "ONGOING",
-    ratePerMin: Math.round(callPricing.offerPrice || callPricing.price),
+    ratePerMin,
     startedAt: new Date(),
   },
 });
-  console.log("Created session for roomId:333333333333", roomId, "Session:", session);
+
+// -----------------------------------
+// RESERVE OFFER IMMEDIATELY
+// -----------------------------------
+
+if (
+  appliedOffer === "FIRST_TIME_OFFER"
+) {
+  await prisma.userOfferUsage.update({
+    where: {
+      userId: intake.userId,
+    },
+    data: {
+      firstOfferUsedAt: new Date(),
+      usedFirst: true,
+    },
+  });
+}
+
+if (
+  appliedOffer === "SECOND_TIME_OFFER"
+) {
+  await prisma.userOfferUsage.update({
+    where: {
+      userId: intake.userId,
+    },
+    data: {
+      secondOfferUsedAt: new Date(),
+      usedSecond: true,
+    },
+  });
+}
+
+
 
   const queueKey = `queue:${intake.astrologerId}`;
   //await updateQueuePositions(queueKey, redis, pubClient);
@@ -42,16 +242,18 @@ if (!callPricing) {
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
   multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
-  multi.set(
-    `active_call:${roomId}`,
-    JSON.stringify({
-      sessionId: session.id,
-      userId: intake.userId,
-      astrologerId: intake.astrologerId,
-      startTime: Date.now(),
-    }),
-    { EX: 3600 },
-  );
+ multi.set(
+  `active_call:${roomId}`,
+  JSON.stringify({
+    sessionId: session.id,
+    userId: intake.userId,
+    astrologerId: intake.astrologerId,
+    startTime: Date.now(),
+    appliedOffer,
+    ratePerMin,
+  }),
+  { EX: 3600 }
+);
   multi.set(
     `current_call:${intake.astrologerId}`, //for testing
     roomId,

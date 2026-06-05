@@ -1,4 +1,3 @@
-// ./utils/database.js
 const mysql = require('mysql2');
 const util = require('util');
 
@@ -17,7 +16,6 @@ connection.connect((err) => {
   console.log('Connected as id ' + connection.threadId);
 });
 
-// Promisify query to use async/await
 connection.query = util.promisify(connection.query);
 
 module.exports = connection;

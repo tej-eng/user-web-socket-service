@@ -178,10 +178,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 data,
               );
               io.to(data.roomId).emit("queue_position", data);
-              console.log(
-                "Queue update emitted to clients:queue_positionuuuuuuuuuuuuuuuuuuuuuuuuuAFTER",
-                data.roomId,
-              );
+              
               break;
 
             case "end_chat_by_astrologer":
@@ -210,15 +207,8 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               }
 
               if (itemToRemove) {
-                console.log(
-                  "Item to remove from queueccccccccc:",
-                  itemToRemove,
-                );
                 const check = await redisClient.lRem(queueKey, 1, itemToRemove);
                 if (check) {
-                  console.log(
-                    "Item removed from queue successfully after astrologer ended chat",
-                  );
                   const res = await updateQueuePositions(
                     queueKey,
                     redisClient,
@@ -258,9 +248,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 pubClient,
               );
               if (res) {
-                console.log(
-                  "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
-                );
                 let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
                 if (queueLength > 0) {
                   setTimeout(async () => {
@@ -300,17 +287,12 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
               }*/
-              console.log(
-                "Handling call acceptance for roomId:444444444444",
-                data.roomId,
-              );
+              
               handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
             case "answer":
-              console.log("Received answer message:", data);
               io.to(data.room_id).emit("answer", data);
-              console.log("Emitted answer to room:", data.room_id);
               break;
             case "call_ended_by_astrologer":
                 const lockKey = `queue_lock:${data.astroId}`;
@@ -364,7 +346,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               // }
               break;
             case "call_cancel_by_astrologer":
-              console.log("Received call_cancel_by_astrologer message:", data);
               await handleReject(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
@@ -390,7 +371,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("chat_request", async (data) => {
         try {
-          console.log("commit AAAAAAAAAAAAAA chat_request");
           const astroId = data.astro_id;
           const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
@@ -494,20 +474,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("join_call", async ({ roomId }) => {
-        console.log("Joining call room:", roomId);
-        console.log("Socket ID:", socket.id);
-
         await socket.join(roomId);
 
         console.log("Joined call room:", roomId);
 
         const clients = await io.in(roomId).fetchSockets();
-
-        console.log(
-          "Clients in room:",
-          clients.map((s) => s.id),
-        );
-
         // emit only if 2 users present
         if (clients.length > 1) {
           console.log("Sending peer_joined");
@@ -540,11 +511,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
-        console.log(
-          "Emitted call_ended_by_user for roomAAAAAAAAAa:",
-          data.room_id,
-          data.astro_id,
-        );
+        
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
         const removeUser = await removeUserFromQueue({
           redis: redisClient,
@@ -558,9 +525,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           pubClient,
         );
         if (response) {
-          console.log(
-            "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
-          );
           let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
           if (queueLength > 0) {
             setTimeout(async () => {
@@ -591,7 +555,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         socket.join(roomId);
         socket.roomId = roomId;
 
-        console.log("User rejoined room after refresh:", roomId);
 
         // OPTIONAL: send latest queue position immediately
         try {
@@ -678,10 +641,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
           //------DELETE KEY AFTER USER CHAT END--------
           let queueKey = `queue:${data.astroId}`;
-          console.log(
-            "Queue key to remove item from after user ended chat:AAAAAAAAAAAAAAA",
-            queueKey,
-          );
           const queueList = await pubClient.lRange(queueKey, 0, -1);
           let itemToRemove = null;
 
@@ -701,25 +660,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
 
           if (itemToRemove) {
-            console.log(
-              "Item to remove from queue after user ended chat:CCCCCCCCCCCCCC:",
-              itemToRemove,
-            );
             const check = await pubClient.lRem(queueKey, 1, itemToRemove);
           }
-
-          console.log(
-            "Item removed from queue successfully after user ended chatDDDDDDDDDDD",
-          );
+          
           const res = await updateQueuePositions(
             queueKey,
             redisClient,
             pubClient,
           );
           if (res) {
-            console.log(
-              "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
-            );
             let queueLength = await pubClient.lLen(queueKey);
             if (queueLength > 0) {
               setTimeout(async () => {
@@ -735,7 +684,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_chat_request", async (data) => {
-        console.log("Received cancel_chat_requestTTTTTTTTTTTTTT:", data);
         const res = await handleReject(
           data.room_id,
           prisma,
@@ -743,9 +691,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           pubClient,
         );
         if (res) {
-          console.log(
-            "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
-          );
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
           if (queueLength > 0) {
             setTimeout(async () => {
@@ -764,7 +709,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_call_request", async (data) => {
-        console.log("Received cancel_call_requestTTTTTTTTTTTTTT:", data);
         const res = await handleReject(
           data.room_id,
           prisma,
@@ -772,9 +716,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           pubClient,
         );
         if (res) {
-          console.log(
-            "Queue positions updated successfully after user ended callEEEEEEEEEEEEEEE",
-          );
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
           if (queueLength > 0) {
             setTimeout(async () => {
@@ -819,7 +760,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       // });
 
       onSafe("autodisconnect", async (data) => {
-        console.log("Received autodisconnect event FROM USER SIDE :", data);
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);
         try {
@@ -843,9 +783,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               pubClient,
             );
             if (res) {
-              console.log(
-                "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
-              );
               let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
               if (queueLength > 0) {
                 setTimeout(async () => {
@@ -858,7 +795,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               }
             }
           } else {
-            console.log("Chat accepted or not enough time has passed.");
           }
         } catch (error) {
           console.error("Auto-disconnect error:", error);
@@ -896,13 +832,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       ========================= */
 
       onSafe("typing", (data) => {
-        console.log("Typing event receivedjjjjjjjjjj:", data);
         socket.to(data.room_id).emit("typing", {
           typing: data.typing,
           user_name: data.user_name,
           roomid: data.room_id,
         });
-        console.log("Typing event receivedHHHHHHHHHHHHHHHHHHHHHHHHHHHH:", data);
         safePublish(pubClient, "user_typing", {
           typing: data.typing,
           user_name: data.user_name,

@@ -794,11 +794,9 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
     }
 
     const data = await redis.get(`request_data:${nextRoomId}`);
-    console.log(`${type} request data for room:`, nextRoomId, data);
     if (data) {
       await redis.del(`request_data:${nextRoomId}`);
     } else {
-      console.warn(`No ${type} request data found for room ${nextRoomId}`);
       await redis.lPop(queueKey);
       return;
       //return await processNextChat(astrologerId, redis, pubClient);
@@ -836,7 +834,6 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
 };
 export const handleReject = async (roomId, prisma, redis, pubClient) => {
   try {
-    console.log("Handling reject for roomId TESTTTTTTTTTTTTTTTT:", roomId);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });
@@ -894,7 +891,6 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
-          console.log("Calculating wait time for userBBBBBBBBBBBBBBBB:", parsed, "cumulativeWait", waitTime, "position", i);
 
         const payload = {
           roomId: parsed.roomId,

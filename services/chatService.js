@@ -381,7 +381,7 @@ export const finalizeChatSession = async (
           receiverId:
             msg.received_id || null,
 
-          receiverName: null,
+          receiverName: msg.sender == "user" ? "Astrologer":"User",
 
           message: msg.message,
 

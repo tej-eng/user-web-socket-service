@@ -366,6 +366,8 @@ export const finalizeChatSession = async (
         );
 
       if (matchedKeywords.length > 0) {
+        console.log("---------------",msg.sender);
+        console.log(msg.sender == "user" ? "Astrologer":"User");
         fraudLogs.push({
           orderId: msg.msg_id,
 

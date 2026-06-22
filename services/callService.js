@@ -140,16 +140,27 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   // CREATE SESSION
   // -----------------------------------
 
-  const session = await prisma.session.create({
-    data: {
-      userId: intake.userId,
-      astrologerId: intake.astrologerId,
-      type: "CALL",
-      status: "ONGOING",
-      ratePerMin,
-      startedAt: new Date(),
-    },
-  });
+  const [session] = await prisma.$transaction([
+    prisma.session.create({
+      data: {
+        userId: intake.userId,
+        astrologerId: intake.astrologerId,
+        type: "CALL",
+        status: "ONGOING",
+        ratePerMin,
+        startedAt: new Date(),
+      },
+    }),
+
+    prisma.astrologer.update({
+      where: {
+        id: intake.astrologerId,
+      },
+      data: {
+        isBusy: true,
+      },
+    }),
+  ]);
 
   // -----------------------------------
   // RESERVE OFFER IMMEDIATELY
@@ -345,7 +356,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           },
         });
 
-        // ASTROLOGER TRANSACTION (CREDIT) ✅ YOUR REQUIRED PART
+        // ASTROLOGER TRANSACTION (CREDIT) 
         await tx.walletTransaction.create({
           data: {
             astrologerWalletId: astroWallet.id,
@@ -357,17 +368,30 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         });
 
         // FINAL: update session
-        await tx.session.update({
-          where: { id: session.id },
-          data: {
-            status: "COMPLETED",
-            endedAt: now,
-            durationSec,
-            coinsDeducted,
-            coinsEarned,
-            commission,
-          },
-        });
+          await Promise.all([
+          tx.session.update({
+            where: {
+              id: session.id,
+            },
+            data: {
+              status: "COMPLETED",
+              endedAt: now,
+              durationSec,
+              coinsDeducted,
+              coinsEarned,
+              commission,
+            },
+          }),
+
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
       });
       console.log(
         "Session finalized and wallets updated for roomId:8888888888888888",

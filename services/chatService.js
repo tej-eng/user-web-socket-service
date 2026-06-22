@@ -1,9 +1,4 @@
-export const handleAcceptChat = async (
-  roomId,
-  prisma,
-  redis,
-  pubClient
-) => {
+export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId },
   });
@@ -30,9 +25,7 @@ export const handleAcceptChat = async (
     throw new Error("Astrologer not found");
   }
 
-  const chatPricing = astrologer.pricing.find(
-    (p) => p.type === "CHAT"
-  );
+  const chatPricing = astrologer.pricing.find((p) => p.type === "CHAT");
 
   if (!chatPricing) {
     throw new Error("CHAT pricing not configured");
@@ -42,181 +35,145 @@ export const handleAcceptChat = async (
   // GET USER OFFER USAGE
   // -----------------------------------
 
-  let userOfferUsage =
-    await prisma.userOfferUsage.findUnique({
-      where: {
+  let userOfferUsage = await prisma.userOfferUsage.findUnique({
+    where: {
+      userId: intake.userId,
+    },
+  });
+
+  if (!userOfferUsage) {
+    userOfferUsage = await prisma.userOfferUsage.create({
+      data: {
         userId: intake.userId,
       },
     });
-
-  if (!userOfferUsage) {
-    userOfferUsage =
-      await prisma.userOfferUsage.create({
-        data: {
-          userId: intake.userId,
-        },
-      });
   }
 
   // -----------------------------------
   // GET GLOBAL PRICING CONFIG
   // -----------------------------------
 
-  const pricingConfig =
-    await prisma.pricingConfig.findFirst();
+  const pricingConfig = await prisma.pricingConfig.findFirst();
 
   // -----------------------------------
   // GET ACTIVE ASTROLOGER OFFER
   // -----------------------------------
 
-  const activeOffer =
-    await prisma.astrologerOffer.findFirst({
-      where: {
-        astrologerId: intake.astrologerId,
-        isActive: true,
-      },
-      include: {
-        offer: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
-// -----------------------------------
-// PRICE PRIORITY LOGIC
-// -----------------------------------
+  const activeOffer = await prisma.astrologerOffer.findFirst({
+    where: {
+      astrologerId: intake.astrologerId,
+      isActive: true,
+    },
+    include: {
+      offer: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+  // -----------------------------------
+  // PRICE PRIORITY LOGIC
+  // -----------------------------------
 
-let ratePerMin = Math.round(chatPricing.price);
+  let ratePerMin = Math.round(chatPricing.price);
 
-let appliedOffer = "NORMAL";
+  let appliedOffer = "NORMAL";
 
-/**
- * FIRST TIME OFFER
- */
-if (
-  pricingConfig?.isFirstOfferEnabled &&
-  !userOfferUsage.firstOfferUsedAt
-) {
-  ratePerMin = Number(pricingConfig.firstChatPrice);
+  /**
+   * FIRST TIME OFFER
+   */
+  if (pricingConfig?.isFirstOfferEnabled && !userOfferUsage.firstOfferUsedAt) {
+    ratePerMin = Number(pricingConfig.firstChatPrice);
 
-  appliedOffer = "FIRST_TIME_OFFER";
+    appliedOffer = "FIRST_TIME_OFFER";
 
-  console.log(
-    "Applying FIRST_TIME_OFFER:",
-    ratePerMin
-  );
-}
+    console.log("Applying FIRST_TIME_OFFER:", ratePerMin);
+  } else if (
 
-/**
- * SECOND TIME OFFER
- */
-else if (
-  pricingConfig?.isSecondOfferEnabled &&
-  !userOfferUsage.secondOfferUsedAt
-) {
-  ratePerMin = Number(pricingConfig.secondChatPrice);
+  /**
+   * SECOND TIME OFFER
+   */
+    pricingConfig?.isSecondOfferEnabled &&
+    !userOfferUsage.secondOfferUsedAt
+  ) {
+    ratePerMin = Number(pricingConfig.secondChatPrice);
 
-  appliedOffer = "SECOND_TIME_OFFER";
+    appliedOffer = "SECOND_TIME_OFFER";
 
-  console.log(
-    "Applying SECOND_TIME_OFFER:",
-    ratePerMin
-  );
-}
+    console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
+  } else if (pricingConfig?.isGlobalOfferEnabled) {
 
-/**
- * GLOBAL OFFER
- */
-else if (
-  pricingConfig?.isGlobalOfferEnabled
-) {
-  ratePerMin = Number(
-    pricingConfig.globalChatPrice
-  );
+  /**
+   * GLOBAL OFFER
+   */
+    ratePerMin = Number(pricingConfig.globalChatPrice);
 
-  appliedOffer = "GLOBAL_OFFER";
+    appliedOffer = "GLOBAL_OFFER";
 
-  console.log(
-    "Applying GLOBAL_OFFER:",
-    ratePerMin
-  );
-}
+    console.log("Applying GLOBAL_OFFER:", ratePerMin);
+  } else if (
 
-/**
- * ASTROLOGER SPECIAL OFFER
- * (Birthday / Diwali / New Year etc)
- */
-else if (
-  activeOffer?.offer &&
-  activeOffer.offer.isActive &&
-  Number(activeOffer.offer.price) > 0
-) {
-  ratePerMin = Number(
-    activeOffer.offer.price
-  );
+  /**
+   * ASTROLOGER SPECIAL OFFER
+   * (Birthday / Diwali / New Year etc)
+   */
+    activeOffer?.offer &&
+    activeOffer.offer.isActive &&
+    Number(activeOffer.offer.price) > 0
+  ) {
+    ratePerMin = Number(activeOffer.offer.price);
 
-  appliedOffer =
-    "ASTROLOGER_SPECIAL_OFFER";
+    appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
 
-  console.log(
-    "Applying ASTROLOGER_SPECIAL_OFFER:",
-    ratePerMin
-  );
-}
+    console.log("Applying ASTROLOGER_SPECIAL_OFFER:", ratePerMin);
+  } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
 
-/**
- * ASTROLOGER OFFER PRICE
- */
-else if (
-  chatPricing.offerPrice &&
-  Number(chatPricing.offerPrice) > 0
-) {
-  ratePerMin = Number(
-    chatPricing.offerPrice
-  );
+  /**
+   * ASTROLOGER OFFER PRICE
+   */
+    ratePerMin = Number(chatPricing.offerPrice);
 
-  appliedOffer =
-    "ASTROLOGER_OFFER_PRICE";
+    appliedOffer = "ASTROLOGER_OFFER_PRICE";
 
-  console.log(
-    "Applying ASTROLOGER_OFFER_PRICE:",
-    ratePerMin
-  );
-}
+    console.log("Applying ASTROLOGER_OFFER_PRICE:", ratePerMin);
+  }
 
-console.log(
-  "Final Rate Per Min:",
-  ratePerMin
-);
+  console.log("Final Rate Per Min:", ratePerMin);
 
-console.log(
-  "Applied Offer:",
-  appliedOffer
-);
+  console.log("Applied Offer:", appliedOffer);
 
   // -----------------------------------
   // CREATE SESSION
   // -----------------------------------
 
-  const session = await prisma.session.create({
-    data: {
-      userId: intake.userId,
-      astrologerId: intake.astrologerId,
-      type: "CHAT",
-      status: "ONGOING",
-      ratePerMin,
-      startedAt: new Date(),
-    },
-  });
+  const [session] = await prisma.$transaction([
+    prisma.session.create({
+      data: {
+        userId: intake.userId,
+        astrologerId: intake.astrologerId,
+        type: "CHAT",
+        status: "ONGOING",
+        ratePerMin,
+        startedAt: new Date(),
+      },
+    }),
+
+    prisma.astrologer.update({
+      where: {
+        id: intake.astrologerId,
+      },
+      data: {
+        isBusy: true,
+      },
+    }),
+  ]);
 
   // -----------------------------------
   // RESERVE OFFER IMMEDIATELY
   // PREVENT MULTIPLE CHATS USING SAME OFFER
   // -----------------------------------
 
-  if (
-    appliedOffer === "FIRST_TIME_OFFER"
-  ) {
+  if (appliedOffer === "FIRST_TIME_OFFER") {
     await prisma.userOfferUsage.update({
       where: {
         userId: intake.userId,
@@ -228,9 +185,7 @@ console.log(
     });
   }
 
-  if (
-    appliedOffer === "SECOND_TIME_OFFER"
-  ) {
+  if (appliedOffer === "SECOND_TIME_OFFER") {
     await prisma.userOfferUsage.update({
       where: {
         userId: intake.userId,
@@ -248,10 +203,7 @@ console.log(
 
   const multi = redis.multi();
 
-  multi.sRem(
-    `user_in_queue:${intake.astrologerId}`,
-    intake.userId
-  );
+  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
 
   multi.set(
     `active_chat:${roomId}`,
@@ -263,14 +215,10 @@ console.log(
       appliedOffer,
       ratePerMin,
     }),
-    { EX: 3600 }
+    { EX: 3600 },
   );
 
-  multi.set(
-    `current_chat:${intake.astrologerId}`,
-    roomId,
-    { EX: 3600 }
-  );
+  multi.set(`current_chat:${intake.astrologerId}`, roomId, { EX: 3600 });
 
   multi.del(`request_data:${roomId}`);
 
@@ -279,13 +227,7 @@ console.log(
   return session;
 };
 
-
-export const finalizeChatSession = async (
-  roomId,
-  prisma,
-  redis,
-  astroId
-) => {
+export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
   let lockKey = null;
   let lockValue = null;
 
@@ -293,27 +235,20 @@ export const finalizeChatSession = async (
     /* =========================
        GET ACTIVE CHAT DATA
     ========================= */
-    const activeChatData = await redis.get(
-      `active_chat:${roomId}`
-    );
+    const activeChatData = await redis.get(`active_chat:${roomId}`);
 
     let parsedActiveChat = null;
     let activeSessionId = null;
 
     if (activeChatData) {
       parsedActiveChat = JSON.parse(activeChatData);
-      activeSessionId =
-        parsedActiveChat.sessionId;
+      activeSessionId = parsedActiveChat.sessionId;
     }
 
     /* =========================
        GET ALL MESSAGES FROM REDIS
     ========================= */
-    const messages = await redis.lRange(
-      `chat_messages:${roomId}`,
-      0,
-      -1
-    );
+    const messages = await redis.lRange(`chat_messages:${roomId}`, 0, -1);
 
     /* =========================
        ATTACH SESSION ID
@@ -323,9 +258,7 @@ export const finalizeChatSession = async (
 
       return {
         ...parsed,
-        session_id:
-          parsed.session_id ||
-          activeSessionId,
+        session_id: parsed.session_id || activeSessionId,
       };
     });
 
@@ -335,55 +268,46 @@ export const finalizeChatSession = async (
         roomId: m.room_id,
         sessionId: m.session_id,
         msg: m.message,
-      }))
+      })),
     );
 
     /* =========================
        FRAUD DETECTION LOGIC
     ========================= */
-    const fraudFlags =
-      await prisma.fraudFlag.findMany({
-        select: {
-          keyword: true,
-        },
-      });
+    const fraudFlags = await prisma.fraudFlag.findMany({
+      select: {
+        keyword: true,
+      },
+    });
 
-    const fraudKeywords = fraudFlags.map((f) =>
-      f.keyword.toLowerCase().trim()
-    );
+    const fraudKeywords = fraudFlags.map((f) => f.keyword.toLowerCase().trim());
 
     const fraudLogs = [];
 
     for (const msg of parsedMessages) {
       if (!msg.message) continue;
 
-      const messageText =
-        msg.message.toLowerCase();
+      const messageText = msg.message.toLowerCase();
 
-      const matchedKeywords =
-        fraudKeywords.filter((keyword) =>
-          messageText.includes(keyword)
-        );
+      const matchedKeywords = fraudKeywords.filter((keyword) =>
+        messageText.includes(keyword),
+      );
 
       if (matchedKeywords.length > 0) {
-        console.log("---------------",msg.sender);
-        console.log(msg.sender == "user" ? "Astrologer":"User");
+        console.log("---------------", msg.sender);
+        console.log(msg.sender == "user" ? "Astrologer" : "User");
         fraudLogs.push({
           orderId: msg.msg_id,
 
-          sessionId:
-            msg.session_id || null,
+          sessionId: msg.session_id || null,
 
-          senderId:
-            msg.sender_id || null,
+          senderId: msg.sender_id || null,
 
-          senderName:
-            msg.sender || null,
+          senderName: msg.sender || null,
 
-          receiverId:
-            msg.received_id || null,
+          receiverId: msg.received_id || null,
 
-          receiverName: msg.sender == "user" ? "Astrologer":"User",
+          receiverName: msg.sender == "user" ? "Astrologer" : "User",
 
           message: msg.message,
 
@@ -406,8 +330,7 @@ export const finalizeChatSession = async (
 
           senderId: msg.sender_id,
 
-          receiverId:
-            msg.received_id,
+          receiverId: msg.received_id,
 
           message: msg.message,
 
@@ -417,8 +340,7 @@ export const finalizeChatSession = async (
 
           replyTo: msg.replyTo,
 
-          sessionId:
-            msg.session_id || null,
+          sessionId: msg.session_id || null,
         })),
 
         skipDuplicates: true,
@@ -434,337 +356,251 @@ export const finalizeChatSession = async (
         skipDuplicates: true,
       });
 
-      console.log(
-        `🚨 Fraud messages detected: ${fraudLogs.length}`
-      );
+      console.log(`🚨 Fraud messages detected: ${fraudLogs.length}`);
     }
 
     /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
-    await redis.del(
-      `chat_messages:${roomId}`
-    );
+    await redis.del(`chat_messages:${roomId}`);
 
-    const currentRoom = await redis.get(
-      `current_chat:${astroId}`
-    );
+    const currentRoom = await redis.get(`current_chat:${astroId}`);
 
     if (currentRoom) {
-      await redis.del(
-        `current_chat:${astroId}`
-      );
+      await redis.del(`current_chat:${astroId}`);
     }
 
     /* =========================
        COMPLETE SESSION + WALLET
     ========================= */
     if (parsedActiveChat) {
-      const parsed =
-        parsedActiveChat;
+      const parsed = parsedActiveChat;
 
       lockKey = `finalize_lock:${parsed.sessionId}`;
 
       lockValue = `${Date.now()}_${Math.random()}`;
 
-      const isLocked =
-        await redis.set(
-          lockKey,
-          lockValue,
-          "NX",
-          "EX",
-          30
-        );
+      const isLocked = await redis.set(lockKey, lockValue, "NX", "EX", 30);
 
       if (!isLocked) {
         return;
       }
 
-      const existingTx =
-        await prisma.walletTransaction.findFirst(
-          {
-            where: {
-              sessionId:
-                parsed.sessionId,
-            },
-          }
-        );
+      const existingTx = await prisma.walletTransaction.findFirst({
+        where: {
+          sessionId: parsed.sessionId,
+        },
+      });
 
       if (existingTx) return;
 
-      await prisma.$transaction(
-        async (tx) => {
-          const session =
-            await tx.session.findUnique({
-              where: {
-                id: parsed.sessionId,
-              },
-            });
+      await prisma.$transaction(async (tx) => {
+        const session = await tx.session.findUnique({
+          where: {
+            id: parsed.sessionId,
+          },
+        });
 
-          if (!session) {
-            throw new Error(
-              "Session not found"
-            );
-          }
+        if (!session) {
+          throw new Error("Session not found");
+        }
 
-          if (
-            session.status ===
-            "COMPLETED"
-          ) {
-            return;
-          }
+        if (session.status === "COMPLETED") {
+          return;
+        }
 
-          /* =========================
+        /* =========================
              CALCULATE DURATION
           ========================= */
-          const now = new Date();
+        const now = new Date();
 
-          const startedAt = new Date(
-            session.startedAt
-          );
+        const startedAt = new Date(session.startedAt);
 
-          const durationSec = Math.floor(
-            (now - startedAt) / 1000
-          );
+        const durationSec = Math.floor((now - startedAt) / 1000);
 
-          const ratePerMin =
-            session.ratePerMin || 1;
+        const ratePerMin = session.ratePerMin || 1;
 
-          let coinsDeducted = 0;
+        let coinsDeducted = 0;
 
-          if (durationSec <= 30) {
-            coinsDeducted =
-              ratePerMin;
-          } else {
-            const durationMin =
-              durationSec / 60;
+        if (durationSec <= 30) {
+          coinsDeducted = ratePerMin;
+        } else {
+          const durationMin = durationSec / 60;
 
-            coinsDeducted =
-              Math.ceil(
-                durationMin *
-                  ratePerMin
-              );
-          }
+          coinsDeducted = Math.ceil(durationMin * ratePerMin);
+        }
 
-          /* =========================
+        /* =========================
              COMMISSION
           ========================= */
-          const commission =
-            Math.floor(
-              coinsDeducted * 0.5
-            );
+        const commission = Math.floor(coinsDeducted * 0.5);
 
-          const coinsEarned =
-            coinsDeducted -
-            commission;
+        const coinsEarned = coinsDeducted - commission;
 
-          /* =========================
+        /* =========================
              USER WALLET
           ========================= */
-          const userWallet =
-            await tx.userWallet.findUnique(
-              {
-                where: {
-                  userId:
-                    session.userId,
-                },
-              }
-            );
+        const userWallet = await tx.userWallet.findUnique({
+          where: {
+            userId: session.userId,
+          },
+        });
 
-          await redis.sRem(
-            `user_in_queue:${astroId}`,
-            session.userId
-          );
+        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
 
-          if (!userWallet) {
-            throw new Error(
-              "User wallet not found"
-            );
-          }
+        if (!userWallet) {
+          throw new Error("User wallet not found");
+        }
 
-          /* =========================
+        /* =========================
              ASTRO WALLET
           ========================= */
-          const astroWallet =
-            await tx.astrologerWallet.upsert(
-              {
-                where: {
-                  astrologerId:
-                    session.astrologerId,
-                },
+        const astroWallet = await tx.astrologerWallet.upsert({
+          where: {
+            astrologerId: session.astrologerId,
+          },
 
-                update: {},
+          update: {},
 
-                create: {
-                  astrologerId:
-                    session.astrologerId,
+          create: {
+            astrologerId: session.astrologerId,
 
-                  balanceCoins: 0,
+            balanceCoins: 0,
 
-                  totalEarned: 0,
+            totalEarned: 0,
 
-                  totalWithdrawn: 0,
-                },
-              }
-            );
+            totalWithdrawn: 0,
+          },
+        });
 
-          /* =========================
+        /* =========================
              BALANCE CHECK
           ========================= */
-          if (
-            userWallet.balanceCoins <
-            coinsDeducted
-          ) {
-            throw new Error(
-              "Insufficient balance"
-            );
-          }
+        if (userWallet.balanceCoins < coinsDeducted) {
+          throw new Error("Insufficient balance");
+        }
 
-          /* =========================
+        /* =========================
              USER DEBIT
           ========================= */
-          await tx.userWallet.update({
-            where: {
-              id: userWallet.id,
-            },
+        await tx.userWallet.update({
+          where: {
+            id: userWallet.id,
+          },
 
-            data: {
-              balanceCoins: {
-                decrement:
-                  coinsDeducted,
-              },
+          data: {
+            balanceCoins: {
+              decrement: coinsDeducted,
             },
-          });
+          },
+        });
 
-          /* =========================
+        /* =========================
              ASTRO CREDIT
           ========================= */
-          await tx.astrologerWallet.update(
-            {
-              where: {
-                id: astroWallet.id,
-              },
+        await tx.astrologerWallet.update({
+          where: {
+            id: astroWallet.id,
+          },
 
-              data: {
-                balanceCoins: {
-                  increment:
-                    coinsEarned,
-                },
+          data: {
+            balanceCoins: {
+              increment: coinsEarned,
+            },
 
-                totalEarned: {
-                  increment:
-                    coinsEarned,
-                },
-              },
-            }
-          );
+            totalEarned: {
+              increment: coinsEarned,
+            },
+          },
+        });
 
-          /* =========================
+        /* =========================
              USER TRANSACTION
           ========================= */
-          await tx.walletTransaction.create(
-            {
-              data: {
-                userWalletId:
-                  userWallet.id,
+        await tx.walletTransaction.create({
+          data: {
+            userWalletId: userWallet.id,
 
-                sessionId:
-                  session.id,
+            sessionId: session.id,
 
-                type: "DEBIT",
+            type: "DEBIT",
 
-                coins:
-                  coinsDeducted,
+            coins: coinsDeducted,
 
-                description:
-                  "Chat session deduction",
-              },
-            }
-          );
+            description: "Chat session deduction",
+          },
+        });
 
-          /* =========================
+        /* =========================
              ASTRO TRANSACTION
           ========================= */
-          await tx.walletTransaction.create(
-            {
-              data: {
-                astrologerWalletId:
-                  astroWallet.id,
+        await tx.walletTransaction.create({
+          data: {
+            astrologerWalletId: astroWallet.id,
 
-                sessionId:
-                  session.id,
+            sessionId: session.id,
 
-                type: "CREDIT",
+            type: "CREDIT",
 
-                coins:
-                  coinsEarned,
+            coins: coinsEarned,
 
-                description:
-                  "Chat session earning",
-              },
-            }
-          );
+            description: "Chat session earning",
+          },
+        });
 
-          /* =========================
+        /* =========================
              UPDATE SESSION
           ========================= */
-          await tx.session.update({
+        await Promise.all([
+          tx.session.update({
             where: {
               id: session.id,
             },
-
             data: {
               status: "COMPLETED",
-
               endedAt: now,
-
               durationSec,
-
               coinsDeducted,
-
               coinsEarned,
-
               commission,
             },
-          });
+          }),
 
-          //update  PricingConfig usage count
-        }
-      );
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
+
+        //update  PricingConfig usage count
+      });
 
       /* =========================
          DELETE ACTIVE CHAT
       ========================= */
-      await redis.del(
-        `active_chat:${roomId}`
-      );
+      await redis.del(`active_chat:${roomId}`);
     }
 
     return true;
   } catch (error) {
-    console.error(
-      "finalizeChatSession error:",
-      error
-    );
+    console.error("finalizeChatSession error:", error);
 
     throw error;
   } finally {
     try {
       if (lockKey && lockValue) {
-        const currentValue =
-          await redis.get(lockKey);
+        const currentValue = await redis.get(lockKey);
 
-        if (
-          currentValue === lockValue
-        ) {
+        if (currentValue === lockValue) {
           await redis.del(lockKey);
         }
       }
     } catch (err) {
-      console.error(
-        "Lock cleanup error:",
-        err
-      );
+      console.error("Lock cleanup error:", err);
     }
   }
 };
@@ -776,14 +612,18 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
     //const queueItem = await redis.lIndex(queueKey, 0);
     const queueList = await redis.lRange(queueKey, 0, -1);
     const queueItem = queueList[0];
-    console.log("Next queue item for astrologer AAAAAAAAAAAAAAAAAAAAAAA", astrologerId, queueItem);
+    console.log(
+      "Next queue item for astrologer AAAAAAAAAAAAAAAAAAAAAAA",
+      astrologerId,
+      queueItem,
+    );
     if (!queueItem) return null;
     const parsedQueue = JSON.parse(queueItem);
     const nextRoomId = parsedQueue.roomId;
     const maximumTime = parsedQueue.maximum_time;
     const userId = parsedQueue.user_id;
-    const type=parsedQueue.type;
-    
+    const type = parsedQueue.type;
+
     console.log("Parsed queue item:", nextRoomId);
     if (!nextRoomId) {
       return null;
@@ -882,14 +722,13 @@ export const handleReject = async (roomId, prisma, redis, pubClient) => {
     console.error("handleReject error:", error);
     throw error;
   }
-  
 };
 export const updateQueuePositions = async (queueKey, redis, pubClient) => {
   try {
     const queueList = await redis.lRange(queueKey, 0, -1);
-         
+
     if (!queueList || queueList.length === 0) return;
-        let waitTime = 0;
+    let waitTime = 0;
     for (let i = 0; i < queueList.length; i++) {
       try {
         const parsed = JSON.parse(queueList[i]);
@@ -897,9 +736,9 @@ export const updateQueuePositions = async (queueKey, redis, pubClient) => {
         const payload = {
           roomId: parsed.roomId,
           position: i,
-          waitTime: waitTime * 60, 
+          waitTime: waitTime * 60,
           message: `Your position is ${i}. Estimated wait time ${waitTime} mins`,
-          type: parsed.type ,
+          type: parsed.type,
         };
 
         await pubClient.publish("queue_update", JSON.stringify(payload));

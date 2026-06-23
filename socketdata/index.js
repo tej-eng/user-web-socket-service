@@ -371,6 +371,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("chat_request", async (data) => {
         try {
+          console.log("----------chat request--------------",data);
           const astroId = data.astro_id;
           const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;

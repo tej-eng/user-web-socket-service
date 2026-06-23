@@ -154,7 +154,9 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
         type: "CHAT",
         status: "ONGOING",
         ratePerMin,
+        source:intake.source,
         startedAt: new Date(),
+
       },
     }),
 

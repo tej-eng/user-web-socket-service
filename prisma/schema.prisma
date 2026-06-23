@@ -231,6 +231,7 @@ model Intake {
   pricePerMin  Float?
   latitude     Float?
   longitude    Float?
+  source String?
 
   @@index([userId])
   @@index([astrologerId])
@@ -759,6 +760,7 @@ model Session {
   fraudLogs FraudLog[]
 
   remedies SessionRemedy[]
+  source String?
 
   createdAt DateTime @default(now())
 

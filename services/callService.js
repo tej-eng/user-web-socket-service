@@ -12,7 +12,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
       pricing: true,
     },
   });
-  console.log("Astrologer details for accepted call:", astrologer);
 
   if (!astrologer) throw new Error("Astrologer not found");
 
@@ -81,7 +80,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "FIRST_TIME_OFFER";
 
-    console.log("Applying FIRST_TIME_OFFER:", ratePerMin);
   } else if (
 
   /**
@@ -94,7 +92,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "SECOND_TIME_OFFER";
 
-    console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
   } else if (pricingConfig?.isGlobalOfferEnabled) {
 
   /**
@@ -104,7 +101,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "GLOBAL_OFFER";
 
-    console.log("Applying GLOBAL_OFFER:", ratePerMin);
   } else if (
 
   /**
@@ -119,7 +115,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
 
-    console.log("Applying ASTROLOGER_SPECIAL_OFFER:", ratePerMin);
   } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
 
   /**
@@ -129,7 +124,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "ASTROLOGER_OFFER_PRICE";
 
-    console.log("Applying ASTROLOGER_OFFER_PRICE:", ratePerMin);
   }
 
   console.log("Final Rate Per Min:", ratePerMin);
@@ -219,12 +213,6 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
   multi.del(`request_data:${roomId}`);
 
   const check = await multi.exec();
-  console.log(
-    "Redis multi exec result for accepting call for roomId:444444444444",
-    roomId,
-    "Result:",
-    check,
-  );
 
   return session;
 };
@@ -236,12 +224,6 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
        DELETE REDIS CHAT LIST
     ========================= */
     const currentRoom = await redis.get(`current_call:${astroId}`);
-    console.log(
-      "Current room for astroId11111111111",
-      astroId,
-      "is",
-      currentRoom,
-    );
     if (currentRoom) {
       await redis.del(`current_call:${astroId}`);
     }
@@ -395,10 +377,6 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           }),
         ]);
       });
-      console.log(
-        "Session finalized and wallets updated for roomId:8888888888888888",
-        `active_call:${roomId}`,
-      );
       await redis.del(`active_call:${roomId}`);
     }
 

@@ -87,7 +87,6 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "FIRST_TIME_OFFER";
 
-    console.log("Applying FIRST_TIME_OFFER:", ratePerMin);
   } else if (
 
   /**
@@ -110,7 +109,6 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "GLOBAL_OFFER";
 
-    console.log("Applying GLOBAL_OFFER:", ratePerMin);
   } else if (
 
   /**
@@ -125,7 +123,6 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
 
-    console.log("Applying ASTROLOGER_SPECIAL_OFFER:", ratePerMin);
   } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
 
   /**
@@ -135,7 +132,6 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
     appliedOffer = "ASTROLOGER_OFFER_PRICE";
 
-    console.log("Applying ASTROLOGER_OFFER_PRICE:", ratePerMin);
   }
 
   console.log("Final Rate Per Min:", ratePerMin);
@@ -265,15 +261,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
       };
     });
 
-    console.log(
-      "MESSAGE SAVE DEBUG:",
-      parsedMessages.map((m) => ({
-        roomId: m.room_id,
-        sessionId: m.session_id,
-        msg: m.message,
-      })),
-    );
-
     /* =========================
        FRAUD DETECTION LOGIC
     ========================= */
@@ -297,8 +284,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
       );
 
       if (matchedKeywords.length > 0) {
-        console.log("---------------", msg.sender);
-        console.log(msg.sender == "user" ? "Astrologer" : "User");
         fraudLogs.push({
           orderId: msg.msg_id,
 
@@ -359,7 +344,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         skipDuplicates: true,
       });
 
-      console.log(`🚨 Fraud messages detected: ${fraudLogs.length}`);
     }
 
     /* =========================
@@ -615,11 +599,6 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
     //const queueItem = await redis.lIndex(queueKey, 0);
     const queueList = await redis.lRange(queueKey, 0, -1);
     const queueItem = queueList[0];
-    console.log(
-      "Next queue item for astrologer AAAAAAAAAAAAAAAAAAAAAAA",
-      astrologerId,
-      queueItem,
-    );
     if (!queueItem) return null;
     const parsedQueue = JSON.parse(queueItem);
     const nextRoomId = parsedQueue.roomId;
@@ -627,7 +606,6 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
     const userId = parsedQueue.user_id;
     const type = parsedQueue.type;
 
-    console.log("Parsed queue item:", nextRoomId);
     if (!nextRoomId) {
       return null;
     }

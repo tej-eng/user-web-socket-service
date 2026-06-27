@@ -120,10 +120,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                     redisClient,
                     pubClient,
                   );
-                  console.log(
-                    "Chat accepted by astrologer, result of handling acceptance:",
-                    result,
-                  );
                   if (result) {
                     io.emit("chatAcceptedByAstrologer", data);
                   }
@@ -132,7 +128,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
-                console.log("Chat rejected by astrologer:", data);
                 await handleReject(data.roomid, prisma, redisClient, pubClient);
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
@@ -173,10 +168,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":
-              console.log(
-                "Queue update received in socket handler",
-                data,
-              );
               io.to(data.roomId).emit("queue_position", data);
               
               break;
@@ -193,8 +184,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               //------DELETE KEY AFTER ASTRLOGER CHAT END--------
               let queueKey = `queue:${data.astroId}`;
               const queueList = await redisClient.lRange(queueKey, 0, -1);
-              console.log("Queue list before removing item:", queueList);
-
               let itemToRemove = null;
 
               for (const item of queueList) {
@@ -263,7 +252,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
 
             case "callAcceptedByAstrologer":
-              console.log("Received callAcceptedByAtrologer message:", data);
               /* let parsed = data;
               console.log("Received callAcceptedByAtrologer data:", parsed);
               try {
@@ -410,10 +398,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               source:data.source,
             });
           } else {
-            console.log(
-              `User is in queue. Position: ${queueLength}, Estimated wait time: ${waitTime} minutes`,
-            );
-
             socket.emit("queue_position", {
               message: `You are in queue`,
               position: queueLength - 1,
@@ -428,7 +412,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("call_request", async (data) => {
         try {
-          console.log("Received call_request data:", data);
           const astroId = data.astro_id;
           const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
@@ -476,14 +459,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("join_call", async ({ roomId }) => {
         await socket.join(roomId);
-
-        console.log("Joined call room:", roomId);
-
         const clients = await io.in(roomId).fetchSockets();
         // emit only if 2 users present
         if (clients.length > 1) {
-          console.log("Sending peer_joined");
-
           socket.to(roomId).emit("peer_joined");
 
           // optional:
@@ -492,7 +470,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("offer", ({ room_id, offer }) => {
-        console.log("Received offer for room:", room_id);
         safePublish(pubClient, "offer", {
           room_id: room_id,
           offer: offer,
@@ -500,7 +477,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("ice-candidate", ({ room_id, candidate }) => {
-        console.log("Received ice candidate for room:", room_id);
         // socket.to(room_id).emit("ice_candidate", { candidate });
         safePublish(pubClient, "ice_candidate", {
           room_id: room_id,
@@ -647,13 +623,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
           for (const item of queueList) {
             const parsed = JSON.parse(item);
-            console.log(
-              "Checking queue item for removal after user ended chat:BBBBBBBBBBB",
-              parsed,
-              parsed.roomId,
-              " === ",
-              data.room_id,
-            );
             if (parsed.roomId === data.room_id) {
               itemToRemove = item;
               break;

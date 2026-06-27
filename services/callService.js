@@ -149,6 +149,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
         status: "ONGOING",
         ratePerMin,
         source:intake.source,
+        roomId:roomId,
         startedAt: new Date(),
       },
     }),

@@ -697,6 +697,138 @@ export const handleReject = async (roomId, prisma, redis, pubClient,by) => {
     if (check) {
       await updateQueuePositions(queueKey, redis, pubClient);
     }
+    //------for update rejected by status in db-------
+
+  const astrologer = await prisma.astrologer.findUnique({
+    where: {
+      id: intake.astrologerId,
+    },
+    include: {
+      pricing: {
+        where: {
+          type: "CHAT",
+          isActive: true,
+        },
+      },
+    },
+  });
+
+  if (!astrologer) {
+    throw new Error("Astrologer not found");
+  }
+
+  const chatPricing = astrologer.pricing.find((p) => p.type === "CHAT");
+
+  if (!chatPricing) {
+    throw new Error("CHAT pricing not configured");
+  }
+
+  // -----------------------------------
+  // GET USER OFFER USAGE
+  // -----------------------------------
+
+  let userOfferUsage = await prisma.userOfferUsage.findUnique({
+    where: {
+      userId: intake.userId,
+    },
+  });
+
+  if (!userOfferUsage) {
+    userOfferUsage = await prisma.userOfferUsage.create({
+      data: {
+        userId: intake.userId,
+      },
+    });
+  }
+
+  // -----------------------------------
+  // GET GLOBAL PRICING CONFIG
+  // -----------------------------------
+
+  const pricingConfig = await prisma.pricingConfig.findFirst();
+
+  // -----------------------------------
+  // GET ACTIVE ASTROLOGER OFFER
+  // -----------------------------------
+
+  const activeOffer = await prisma.astrologerOffer.findFirst({
+    where: {
+      astrologerId: intake.astrologerId,
+      isActive: true,
+    },
+    include: {
+      offer: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+  // -----------------------------------
+  // PRICE PRIORITY LOGIC
+  // -----------------------------------
+
+  let ratePerMin = Math.round(chatPricing.price);
+
+  let appliedOffer = "NORMAL";
+
+  /**
+   * FIRST TIME OFFER
+   */
+  if (pricingConfig?.isFirstOfferEnabled && !userOfferUsage.firstOfferUsedAt) {
+    ratePerMin = Number(pricingConfig.firstChatPrice);
+
+    appliedOffer = "FIRST_TIME_OFFER";
+
+  } else if (
+
+  /**
+   * SECOND TIME OFFER
+   */
+    pricingConfig?.isSecondOfferEnabled &&
+    !userOfferUsage.secondOfferUsedAt
+  ) {
+    ratePerMin = Number(pricingConfig.secondChatPrice);
+
+    appliedOffer = "SECOND_TIME_OFFER";
+
+    console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
+  } else if (pricingConfig?.isGlobalOfferEnabled) {
+
+  /**
+   * GLOBAL OFFER
+   */
+    ratePerMin = Number(pricingConfig.globalChatPrice);
+
+    appliedOffer = "GLOBAL_OFFER";
+
+  } else if (
+
+  /**
+   * ASTROLOGER SPECIAL OFFER
+   * (Birthday / Diwali / New Year etc)
+   */
+    activeOffer?.offer &&
+    activeOffer.offer.isActive &&
+    Number(activeOffer.offer.price) > 0
+  ) {
+    ratePerMin = Number(activeOffer.offer.price);
+
+    appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
+
+  } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
+
+  /**
+   * ASTROLOGER OFFER PRICE
+   */
+    ratePerMin = Number(chatPricing.offerPrice);
+
+    appliedOffer = "ASTROLOGER_OFFER_PRICE";
+
+  }
+
+  console.log("Final Rate Per Min:", ratePerMin);
+
+  console.log("Applied Offer:", appliedOffer);
      prisma.session.create({
       data: {
         userId: intake.userId,

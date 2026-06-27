@@ -830,7 +830,7 @@ export const handleReject = async (roomId, prisma, redis, pubClient,by) => {
 
   console.log("Applied Offer:", appliedOffer);
   console.log("---------------------by------q--:",by);
-     prisma.session.create({
+     await prisma.session.create({
       data: {
         userId: intake.userId,
         astrologerId: intake.astrologerId,

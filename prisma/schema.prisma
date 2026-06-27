@@ -762,7 +762,7 @@ model Session {
   remedies SessionRemedy[]
   source String?
   roomId String?
-
+  by        String?
   createdAt DateTime @default(now())
 
   @@index([userId])

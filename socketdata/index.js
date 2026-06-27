@@ -128,7 +128,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
-                await handleReject(data.roomid, prisma, redisClient, pubClient);
+                await handleReject(data.roomid, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
               }
@@ -235,6 +235,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 prisma,
                 redisClient,
                 pubClient,
+                "REJECTED BY ASTROLOGER"
               );
               if (res) {
                 let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -334,7 +335,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               // }
               break;
             case "call_cancel_by_astrologer":
-              await handleReject(data.roomId, prisma, redisClient, pubClient);
+              await handleReject(data.roomId, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }
@@ -659,6 +660,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           prisma,
           redisClient,
           pubClient,
+          "REJECTED BY USER"
         );
         if (res) {
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -684,6 +686,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           prisma,
           redisClient,
           pubClient,
+          "REJECTED BY USER"
         );
         if (res) {
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -751,6 +754,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               prisma,
               redisClient,
               pubClient,
+              "AUTO DISCONNECT"
             );
             if (res) {
               let queueLength = await pubClient.lLen(`queue:${data.astroid}`);

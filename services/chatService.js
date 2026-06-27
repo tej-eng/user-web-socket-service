@@ -655,7 +655,7 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
     return null;
   }
 };
-export const handleReject = async (roomId, prisma, redis, pubClient) => {
+export const handleReject = async (roomId, prisma, redis, pubClient,by) => {
   try {
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
@@ -697,7 +697,20 @@ export const handleReject = async (roomId, prisma, redis, pubClient) => {
     if (check) {
       await updateQueuePositions(queueKey, redis, pubClient);
     }
+     prisma.session.create({
+      data: {
+        userId: intake.userId,
+        astrologerId: intake.astrologerId,
+        type: "CHAT",
+        status: "CANCELLED",
+        ratePerMin,
+        source:intake.source,
+        roomId:roomId,
+        by:by,
+        startedAt: new Date(),
 
+      },
+    });
     return intake.astrologerId;
   } catch (error) {
     console.error("handleReject error:", error);

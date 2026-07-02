@@ -592,7 +592,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
-// services/chatService.js
 export const processNextRequest = async (astrologerId, redis, pubClient) => {
   try {
     const queueKey = `queue:${astrologerId}`;
@@ -829,7 +828,6 @@ export const handleReject = async (roomId, prisma, redis, pubClient,by) => {
   console.log("Final Rate Per Min:", ratePerMin);
 
   console.log("Applied Offer:", appliedOffer);
-  console.log("---------------------by------q--:",by);
      await prisma.session.create({
       data: {
         userId: intake.userId,

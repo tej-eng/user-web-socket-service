@@ -16,6 +16,7 @@ import {
   handleAcceptCall,
   finalizeCallSession,
   removeUserFromQueue,
+  handleCallReject
 } from "../services/callService.js";
 
 /* =========================
@@ -335,7 +336,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               // }
               break;
             case "call_cancel_by_astrologer":
-              await handleReject(data.roomId, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
+              await handleCallReject(data.roomId, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }
@@ -681,7 +682,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_call_request", async (data) => {
-        const res = await handleReject(
+        const res = await handleCallReject(
           data.room_id,
           prisma,
           redisClient,
@@ -748,14 +749,25 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               roomId: roomId,
               status: "reject",
             });
-
-            const res = await handleReject(
+            if(data.type=="call"){
+               const res = await handleCallReject(
               roomId,
               prisma,
               redisClient,
               pubClient,
               "AUTO DISCONNECT"
             );
+
+            }else{
+               const res = await handleReject(
+              roomId,
+              prisma,
+              redisClient,
+              pubClient,
+              "AUTO DISCONNECT"
+            );
+            }
+           
             if (res) {
               let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
               if (queueLength > 0) {

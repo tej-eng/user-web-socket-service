@@ -216,6 +216,200 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
   return session;
 };
+export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
+  try {
+    const intake = await prisma.intake.findFirst({
+      where: { chatId: roomId },
+    });
+
+    if (!intake) return null;
+
+    const queueKey = `queue:${intake.astrologerId}`;
+    // get full queue
+    const queueList = await redis.lRange(queueKey, 0, -1);
+
+    let matchedItem = null;
+
+    //  find correct JSON string
+    for (const item of queueList) {
+      const parsed = JSON.parse(item);
+      if (parsed.roomId === roomId) {
+        matchedItem = item;
+        break;
+      }
+    }
+
+    const multi = redis.multi();
+
+    // remove exact match
+    if (matchedItem) {
+      multi.lRem(queueKey, 0, matchedItem);
+    }
+
+    // remove user from set
+    const check = await redis.sRem(
+      `user_in_queue:${intake.astrologerId}`,
+      intake.userId,
+    );
+
+    multi.del(`request_data:${roomId}`);
+
+    await multi.exec();
+    if (check) {
+      await updateQueuePositions(queueKey, redis, pubClient);
+    }
+    //------for update rejected by status in db-------
+
+  const astrologer = await prisma.astrologer.findUnique({
+    where: {
+      id: intake.astrologerId,
+    },
+    include: {
+      pricing: {
+        where: {
+          type: "CHAT",
+          isActive: true,
+        },
+      },
+    },
+  });
+
+  if (!astrologer) {
+    throw new Error("Astrologer not found");
+  }
+
+  const chatPricing = astrologer.pricing.find((p) => p.type === "CHAT");
+
+  if (!chatPricing) {
+    throw new Error("CHAT pricing not configured");
+  }
+
+  // -----------------------------------
+  // GET USER OFFER USAGE
+  // -----------------------------------
+
+  let userOfferUsage = await prisma.userOfferUsage.findUnique({
+    where: {
+      userId: intake.userId,
+    },
+  });
+
+  if (!userOfferUsage) {
+    userOfferUsage = await prisma.userOfferUsage.create({
+      data: {
+        userId: intake.userId,
+      },
+    });
+  }
+
+  // -----------------------------------
+  // GET GLOBAL PRICING CONFIG
+  // -----------------------------------
+
+  const pricingConfig = await prisma.pricingConfig.findFirst();
+
+  // -----------------------------------
+  // GET ACTIVE ASTROLOGER OFFER
+  // -----------------------------------
+
+  const activeOffer = await prisma.astrologerOffer.findFirst({
+    where: {
+      astrologerId: intake.astrologerId,
+      isActive: true,
+    },
+    include: {
+      offer: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+  // -----------------------------------
+  // PRICE PRIORITY LOGIC
+  // -----------------------------------
+
+  let ratePerMin = Math.round(chatPricing.price);
+
+  let appliedOffer = "NORMAL";
+
+  /**
+   * FIRST TIME OFFER
+   */
+  if (pricingConfig?.isFirstOfferEnabled && !userOfferUsage.firstOfferUsedAt) {
+    ratePerMin = Number(pricingConfig.firstChatPrice);
+
+    appliedOffer = "FIRST_TIME_OFFER";
+
+  } else if (
+
+  /**
+   * SECOND TIME OFFER
+   */
+    pricingConfig?.isSecondOfferEnabled &&
+    !userOfferUsage.secondOfferUsedAt
+  ) {
+    ratePerMin = Number(pricingConfig.secondChatPrice);
+
+    appliedOffer = "SECOND_TIME_OFFER";
+
+    console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
+  } else if (pricingConfig?.isGlobalOfferEnabled) {
+
+  /**
+   * GLOBAL OFFER
+   */
+    ratePerMin = Number(pricingConfig.globalChatPrice);
+
+    appliedOffer = "GLOBAL_OFFER";
+
+  } else if (
+
+  /**
+   * ASTROLOGER SPECIAL OFFER
+   * (Birthday / Diwali / New Year etc)
+   */
+    activeOffer?.offer &&
+    activeOffer.offer.isActive &&
+    Number(activeOffer.offer.price) > 0
+  ) {
+    ratePerMin = Number(activeOffer.offer.price);
+
+    appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
+
+  } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
+
+  /**
+   * ASTROLOGER OFFER PRICE
+   */
+    ratePerMin = Number(chatPricing.offerPrice);
+
+    appliedOffer = "ASTROLOGER_OFFER_PRICE";
+
+  }
+
+  console.log("Final Rate Per Min:", ratePerMin);
+
+  console.log("Applied Offer:", appliedOffer);
+     await prisma.session.create({
+      data: {
+        userId: intake.userId,
+        astrologerId: intake.astrologerId,
+        type: "CHAT",
+        status: "CANCELLED",
+        ratePerMin,
+        source:intake.source,
+        roomId:roomId,
+        by:by,
+        startedAt: new Date(),
+
+      },
+    });
+    return intake.astrologerId;
+  } catch (error) {
+    console.error("handleReject error:", error);
+    throw error;
+  }
+};
 export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
   let lockKey = null;
   let lockValue = null;

@@ -267,7 +267,7 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
     include: {
       pricing: {
         where: {
-          type: "CHAT",
+          type: "CALL",
           isActive: true,
         },
       },
@@ -278,9 +278,9 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
     throw new Error("Astrologer not found");
   }
 
-  const chatPricing = astrologer.pricing.find((p) => p.type === "CHAT");
+  const callPricing = astrologer.pricing.find((p) => p.type === "CALL");
 
-  if (!chatPricing) {
+  if (!callPricing) {
     throw new Error("CHAT pricing not configured");
   }
 
@@ -328,7 +328,7 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
   // PRICE PRIORITY LOGIC
   // -----------------------------------
 
-  let ratePerMin = Math.round(chatPricing.price);
+  let ratePerMin = Math.round(callPricing.price);
 
   let appliedOffer = "NORMAL";
 
@@ -376,25 +376,24 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
 
-  } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
+  } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
 
   /**
    * ASTROLOGER OFFER PRICE
    */
-    ratePerMin = Number(chatPricing.offerPrice);
+    ratePerMin = Number(callPricing.offerPrice);
 
     appliedOffer = "ASTROLOGER_OFFER_PRICE";
 
   }
 
-  console.log("Final Rate Per Min:", ratePerMin);
 
   console.log("Applied Offer:", appliedOffer);
      await prisma.session.create({
       data: {
         userId: intake.userId,
         astrologerId: intake.astrologerId,
-        type: "CHAT",
+        type: "CALL",
         status: "CANCELLED",
         ratePerMin,
         source:intake.source,
@@ -639,4 +638,36 @@ export const removeUserFromQueue = async ({ redis, queueKey, roomId }) => {
 
     return false;
   }
+};
+
+export const updateQueuePositions = async (queueKey, redis, pubClient) => {
+  try {
+    const queueList = await redis.lRange(queueKey, 0, -1);
+
+    if (!queueList || queueList.length === 0) return;
+    let waitTime = 0;
+    for (let i = 0; i < queueList.length; i++) {
+      try {
+        const parsed = JSON.parse(queueList[i]);
+
+        const payload = {
+          roomId: parsed.roomId,
+          position: i,
+          waitTime: waitTime * 60,
+          message: `Your position is ${i}. Estimated wait time ${waitTime} mins`,
+          type: parsed.type,
+        };
+
+        await pubClient.publish("queue_update", JSON.stringify(payload));
+        waitTime += parsed.maximum_time || 0;
+
+        // Add current user's time for next users
+      } catch (err) {
+        console.error("Queue parse error:", err);
+      }
+    }
+  } catch (error) {
+    console.error("updateQueuePositions error:", error);
+  }
+  return true;
 };

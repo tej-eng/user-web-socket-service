@@ -751,6 +751,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               roomId: roomId,
               status: "reject",
             });
+            
             if(data.type=="call"){
                const res = await handleCallReject(
               roomId,
@@ -769,8 +770,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               "AUTO DISCONNECT"
             );
             }
-           
-            if (res) {
               let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
               if (queueLength > 0) {
                 setTimeout(async () => {
@@ -781,7 +780,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   );
                 }, 5000);
               }
-            }
+            
           } else {
           }
         } catch (error) {

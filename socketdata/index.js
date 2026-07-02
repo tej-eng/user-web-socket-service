@@ -129,6 +129,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
+                
                 await handleReject(data.roomid, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
@@ -657,6 +658,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       onSafe("cancel_chat_request", async (data) => {
+        console.log("cancelled by user");
         const res = await handleReject(
           data.room_id,
           prisma,

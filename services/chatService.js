@@ -329,6 +329,8 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           replyTo: msg.replyTo,
 
           sessionId: msg.session_id || null,
+          time:msg.time,
+
         })),
 
         skipDuplicates: true,

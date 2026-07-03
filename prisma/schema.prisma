@@ -872,6 +872,7 @@ model Message {
   replyTo Json?
 
   sessionId String?
+  time String?
   session   Session? @relation(fields: [sessionId], references: [id])
 
   createdAt DateTime @default(now())

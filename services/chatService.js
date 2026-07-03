@@ -306,13 +306,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
       }
     }
 
-
-    console.log(
-  parsedMessages.map((m) => ({
-    msgId: m.msg_id,
-    time: m.time,
-  }))
-);
+  
 
     /* =========================
        SAVE MESSAGES

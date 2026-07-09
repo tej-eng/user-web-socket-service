@@ -16,8 +16,12 @@ import {
   handleAcceptCall,
   finalizeCallSession,
   removeUserFromQueue,
-  handleCallReject
+  handleCallReject,
 } from "../services/callService.js";
+
+import {
+  sendAstrologerNotification,
+} from "../services/notificationService.js";
 
 /* =========================
    Socket State
@@ -129,8 +133,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
-                
-                await handleReject(data.roomid, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
+                await handleReject(
+                  data.roomid,
+                  prisma,
+                  redisClient,
+                  pubClient,
+                  "REJECTED BY ASTROLOGER",
+                );
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
               }
@@ -171,7 +180,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
             case "queue_update":
               io.to(data.roomId).emit("queue_position", data);
-              
+
               break;
 
             case "end_chat_by_astrologer":
@@ -237,7 +246,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 prisma,
                 redisClient,
                 pubClient,
-                "REJECTED BY ASTROLOGER"
+                "REJECTED BY ASTROLOGER",
               );
               if (res) {
                 let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -278,7 +287,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 console.error(" STILL NO ROOM ID", parsed);
                 return;
               }*/
-              
+
               handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
@@ -286,20 +295,33 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               io.to(data.room_id).emit("answer", data);
               break;
             case "call_ended_by_astrologer":
-                const lockKey = `queue_lock:${data.astroId}`;
-                const lock = await redisClient.set(lockKey, "1", "NX", "EX", 2);
+              const lockKey = `queue_lock:${data.astroId}`;
+              const lock = await redisClient.set(lockKey, "1", "NX", "EX", 2);
 
-                if (!lock) return;
+              if (!lock) return;
 
-                try {
-                  io.to(data.roomId).emit("call_ended_by_astrologer", data);
-                await finalizeCallSession(data.roomId,prisma,redisClient,data.astroId);
-                await removeUserFromQueue({redis: redisClient, queueKey: `queue:${data.astroId}`, roomId: data.roomId});
-                await updateQueuePositions(`queue:${data.astroId}`, redisClient, pubClient);
+              try {
+                io.to(data.roomId).emit("call_ended_by_astrologer", data);
+                await finalizeCallSession(
+                  data.roomId,
+                  prisma,
+                  redisClient,
+                  data.astroId,
+                );
+                await removeUserFromQueue({
+                  redis: redisClient,
+                  queueKey: `queue:${data.astroId}`,
+                  roomId: data.roomId,
+                });
+                await updateQueuePositions(
+                  `queue:${data.astroId}`,
+                  redisClient,
+                  pubClient,
+                );
                 await processNextRequest(data.astroId, redisClient, pubClient);
-                } finally {
+              } finally {
                 await redisClient.del(lockKey);
-                }
+              }
               // console.log("Received call_ended_by_astrologer message:", data);
               // io.to(data.roomId).emit("call_ended_by_astrologer", data);
               // finalizeCallSession(
@@ -338,7 +360,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
             case "call_cancel_by_astrologer":
               console.log("comming in call call_cancel_by_astrologer");
-              await handleCallReject(data.roomId, prisma, redisClient, pubClient,"REJECTED BY ASTROLOGER");
+              await handleCallReject(
+                data.roomId,
+                prisma,
+                redisClient,
+                pubClient,
+                "REJECTED BY ASTROLOGER",
+              );
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
               break;
           }
@@ -399,8 +427,31 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               room_id: roomId,
               maximum_time: data.maximum_time,
               user_image: data.user_image,
-              source:data.source,
+              source: data.source,
             });
+
+            // Prevent duplicate push notifications
+            const notifyKey = `notify:chat:${roomId}`;
+
+            const shouldSend = await redisClient.set(notifyKey, "1", {
+              NX: true,
+              EX: 30,
+            });
+
+            if (shouldSend) {
+              await sendAstrologerNotification(
+                redisClient,
+                astroId,
+                "New Chat Request",
+                `${sanitizeHtml(data.userName || "")} wants to chat with you.`,
+                {
+                  type: "chat",
+                  roomId,
+                  astroId,
+                  userId: data.user_id,
+                },
+              );
+            }
           } else {
             socket.emit("queue_position", {
               message: `You are in queue`,
@@ -438,16 +489,35 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
 
           if (queueLength === 1) {
-            pubClient.publish(
-              "call_start",
-              JSON.stringify({
-                room_id: roomId,
-                callerId: data.user_id,
-                receiverId: astroId,
-                callTime: data.maximum_time,
-                userName:data.userName,
-              }),
-            );
+            safePublish(pubClient, "call_start", {
+              room_id: roomId,
+              callerId: data.user_id,
+              receiverId: astroId,
+              callTime: data.maximum_time,
+              userName: data.userName,
+            });
+
+            const notifyKey = `notify:call:${roomId}`;
+
+            const shouldSend = await redisClient.set(notifyKey, "1", {
+              NX: true,
+              EX: 30,
+            });
+
+            if (shouldSend) {
+              await sendAstrologerNotification(
+                redisClient,
+                astroId,
+                "Incoming Call",
+                `${sanitizeHtml(data.userName || "")} is calling you.`,
+                {
+                  type: "call",
+                  roomId,
+                  astroId,
+                  userId: data.user_id,
+                },
+              );
+            }
           } else {
             socket.emit("queue_position", {
               message: `You are in queue`,
@@ -492,29 +562,28 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
-        
+
         finalizeCallSession(data.room_id, prisma, redisClient, data.astro_id);
         const removeUser = await removeUserFromQueue({
           redis: redisClient,
           queueKey: `queue:${data.astro_id}`,
           roomId: data.room_id,
         });
-        if(removeUser){
+        if (removeUser) {
           const response = await updateQueuePositions(
-          `queue:${data.astro_id}`,
-          redisClient,
-          pubClient,
-        );
-        if (response) {
-          let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
-          if (queueLength > 0) {
-            setTimeout(async () => {
-              await processNextRequest(data.astro_id, redisClient, pubClient);
-            }, 5000);
+            `queue:${data.astro_id}`,
+            redisClient,
+            pubClient,
+          );
+          if (response) {
+            let queueLength = await pubClient.lLen(`queue:${data.astro_id}`);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextRequest(data.astro_id, redisClient, pubClient);
+              }, 5000);
+            }
           }
         }
-        }
-        
       });
 
       /* =========================
@@ -535,7 +604,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
         socket.join(roomId);
         socket.roomId = roomId;
-
 
         // OPTIONAL: send latest queue position immediately
         try {
@@ -636,7 +704,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           if (itemToRemove) {
             const check = await pubClient.lRem(queueKey, 1, itemToRemove);
           }
-          
+
           const res = await updateQueuePositions(
             queueKey,
             redisClient,
@@ -664,7 +732,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           prisma,
           redisClient,
           pubClient,
-          "REJECTED BY USER"
+          "REJECTED BY USER",
         );
         if (res) {
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -691,7 +759,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           prisma,
           redisClient,
           pubClient,
-          "REJECTED BY USER"
+          "REJECTED BY USER",
         );
         if (res) {
           let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
@@ -753,36 +821,30 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               roomId: roomId,
               status: "reject",
             });
-            
-            if(data.type=="call"){
-               const res = await handleCallReject(
-              roomId,
-              prisma,
-              redisClient,
-              pubClient,
-              "AUTO DISCONNECT"
-            );
 
-            }else{
-               const res = await handleReject(
-              roomId,
-              prisma,
-              redisClient,
-              pubClient,
-              "AUTO DISCONNECT"
-            );
+            if (data.type == "call") {
+              const res = await handleCallReject(
+                roomId,
+                prisma,
+                redisClient,
+                pubClient,
+                "AUTO DISCONNECT",
+              );
+            } else {
+              const res = await handleReject(
+                roomId,
+                prisma,
+                redisClient,
+                pubClient,
+                "AUTO DISCONNECT",
+              );
             }
-              let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
-              if (queueLength > 0) {
-                setTimeout(async () => {
-                  await processNextRequest(
-                    data.astroid,
-                    redisClient,
-                    pubClient,
-                  );
-                }, 5000);
-              }
-            
+            let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextRequest(data.astroid, redisClient, pubClient);
+              }, 5000);
+            }
           } else {
           }
         } catch (error) {

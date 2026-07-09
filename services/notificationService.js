@@ -3,7 +3,7 @@ import OneSignal from "@onesignal/node-onesignal";
 const client = new OneSignal.DefaultApi(
   OneSignal.createConfiguration({
     restApiKey: process.env.ONESIGNAL_REST_API_KEY,
-  })
+  }),
 );
 
 export async function sendAstrologerNotification(
@@ -11,7 +11,7 @@ export async function sendAstrologerNotification(
   astroId,
   title,
   message,
-  data
+  data,
 ) {
   try {
     const key = `presence:astro:${astroId}`;
@@ -19,7 +19,9 @@ export async function sendAstrologerNotification(
 
     // Astrologer has never connected or presence expired
     if (!presence) {
-      console.log(`[Notification] Presence not found for astrologer ${astroId}`);
+      console.log(
+        `[Notification] Presence not found for astrologer ${astroId}`,
+      );
       return {
         success: false,
         reason: "PRESENCE_NOT_FOUND",
@@ -36,7 +38,7 @@ export async function sendAstrologerNotification(
 
     if (!shouldNotify) {
       console.log(
-        `[Notification] Astrologer ${astroId} is active. Skipping push notification.`
+        `[Notification] Astrologer ${astroId} is active. Skipping push notification.`,
       );
 
       return {
@@ -47,7 +49,7 @@ export async function sendAstrologerNotification(
 
     if (!astro.playerId) {
       console.log(
-        `[Notification] Player ID not found for astrologer ${astroId}`
+        `[Notification] Player ID not found for astrologer ${astroId}`,
       );
 
       return {
@@ -55,25 +57,31 @@ export async function sendAstrologerNotification(
         reason: "PLAYER_ID_NOT_FOUND",
       };
     }
-
-    await client.createNotification({
+    console.log("Player ID:", astro.playerId);
+    console.log("typeof:", typeof astro.playerId);
+    console.log("typeof222222222222222:",  astro.playerId);
+    console.log("Notification payload:", {
       app_id: process.env.ONESIGNAL_APP_ID,
-
       include_player_ids: [astro.playerId],
-
-      headings: {
-        en: title,
-      },
-
-      contents: {
-        en: message,
-      },
-
-      data,
     });
+   await client.createNotification({
+    app_id: process.env.ONESIGNAL_APP_ID,
+
+    include_subscription_ids: [astro.playerId],
+
+    headings: {
+      en: title,
+    },
+
+    contents: {
+      en: message,
+    },
+
+    data,
+});
 
     console.log(
-      `[Notification] Push sent successfully to astrologer ${astroId}`
+      `[Notification] Push sent successfully to astrologer ${astroId}`,
     );
 
     return {

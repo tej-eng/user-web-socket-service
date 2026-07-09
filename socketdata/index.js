@@ -414,6 +414,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           }
 
           if (queueLength === 1) {
+            console.log("comminng for new chat request ");
             safePublish(pubClient, "chat_requests", {
               message: "Chat request sent successfully",
               userName: sanitizeHtml(data.userName || ""),

@@ -608,24 +608,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
         // OPTIONAL: send latest queue position immediately
         try {
-          // const queueKey = `chat_queue:${data.astro_id}`;
-          // const queueList = await redisClient.lRange(queueKey, 0, -1);
-          // let position = -1;
-          // let waitTime = 0;
-          // for (let i = 0; i < queueList.length; i++) {
-          //   const user = JSON.parse(queueList[i]);
-          //   if (user.roomId === roomId) {
-          //     position = i;
-          //     break;
-          //   }
-          //   waitTime += user.maximum_time;
-          // }
-          // socket.emit("queue_position", {
-          //   roomId,
-          //   position,
-          //   waitTime: waitTime * 60,
-          //   message: "Restored queue position after refresh"
-          // });
+          
         } catch (err) {
           console.error("Rejoin queue error:", err);
         }
@@ -779,32 +762,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
-      // onSafe("queue_cancel", async (data) => {
-      //   io.emit("chat_rejected", data);
-      //   safePublish(pubClient, "chat_cancel_by_user", {
-      //     roomId: data.room_id,
-      //     astroid: data.astroid,
-      //     user_id: data.user_id,
-      //     message: "User has cancelled the chat request from queue",
-      //   });
-      //   const res = await handleReject(
-      //     data.room_id,
-      //     prisma,
-      //     redisClient,
-      //     pubClient,
-      //   );
-      //   if (res) {
-      //     console.log(
-      //       "Queue positions updated successfully after user ended chatEEEEEEEEEEEEEEE",
-      //     );
-      //     let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
-      //     if (queueLength > 0) {
-      //       setTimeout(async () => {
-      //         await processNextRequest(data.astroid, redisClient, pubClient);
-      //       }, 5000);
-      //     }
-      //   }
-      // });
+     
 
       onSafe("autodisconnect", async (data) => {
         const roomId = String(data.room_id);

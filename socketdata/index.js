@@ -260,34 +260,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   }, 5000);
                 }
               }
-              //handelRejectChat(data.roomId, prisma, redisClient, pubClient);
               break;
 
             case "callAcceptedByAstrologer":
-              /* let parsed = data;
-              console.log("Received callAcceptedByAtrologer data:", parsed);
-              try {
-                parsed = JSON.parse(parsed);
-
-                //  handle double stringify
-                if (typeof parsed === "string") {
-                  console.log("Data was double stringified, parsing again:", parsed);
-                  parsed = JSON.parse(parsed);
-                }
-
-              } catch (e) {
-                console.error(" JSON PARSE ERROR:", e);
-                return;
-              }
-
-              console.log("FINAL DATA:", parsed);
-              console.log("ROOM:", parsed.roomId);
-
-              if (!parsed.roomId) {
-                console.error(" STILL NO ROOM ID", parsed);
-                return;
-              }*/
-
               handleAcceptCall(data.roomId, prisma, redisClient, pubClient);
               io.to(data.roomId).emit("callAcceptedByAstrologer", data);
               break;
@@ -322,41 +297,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               } finally {
                 await redisClient.del(lockKey);
               }
-              // console.log("Received call_ended_by_astrologer message:", data);
-              // io.to(data.roomId).emit("call_ended_by_astrologer", data);
-              // finalizeCallSession(
-              //   data.roomId,
-              //   prisma,
-              //   redisClient,
-              //   data.astroId,
-              // );
-              // removeUserFromQueue({
-              //   redis: redisClient,
-              //   queueKey: `queue:${data.astroId}`,
-              //   roomId: data.roomId,
-              // });
-              // const response = await updateQueuePositions(
-              //   `queue:${data.astroId}`,
-              //   redisClient,
-              //   pubClient,
-              // );
-              // if (response) {
-              //   console.log(
-              //     "Queue positions updated successfully for call after user ended callEEEEEEEEEEEEEEE",
-              //   );
-              //   let queueLength = await pubClient.lLen(
-              //     `queue:${data.astroId}`,
-              //   );
-              //   if (queueLength > 0) {
-              //     setTimeout(async () => {
-              //       await processNextRequest(
-              //         data.astroId,
-              //         redisClient,
-              //         pubClient,
-              //       );
-              //     }, 5000);
-              //   }
-              // }
+             
               break;
             case "call_cancel_by_astrologer":
               console.log("comming in call call_cancel_by_astrologer");

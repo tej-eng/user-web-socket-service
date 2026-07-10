@@ -60,10 +60,9 @@ export async function sendAstrologerNotification(
     console.log("Player ID:", astro.playerId);
     console.log("typeof:", typeof astro.playerId);
     console.log("typeof222222222222222:",  astro.playerId);
-    console.log("Notification payload:", {
-      app_id: process.env.ONESIGNAL_APP_ID,
-      include_player_ids: [astro.playerId],
-    });
+    console.log("headings------------",title);
+    console.log("contents------------",message);
+    console.log("data------------",data);
    await client.createNotification({
     app_id: process.env.ONESIGNAL_APP_ID,
 

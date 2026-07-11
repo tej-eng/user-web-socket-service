@@ -389,6 +389,7 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
 
 
   console.log("Applied Offer:", appliedOffer);
+  
      await prisma.session.create({
       data: {
         userId: intake.userId,

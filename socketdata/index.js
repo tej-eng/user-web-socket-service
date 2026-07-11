@@ -19,9 +19,7 @@ import {
   handleCallReject,
 } from "../services/callService.js";
 
-import {
-  sendAstrologerNotification,
-} from "../services/notificationService.js";
+import { sendAstrologerNotification } from "../services/notificationService.js";
 
 /* =========================
    Socket State
@@ -297,7 +295,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               } finally {
                 await redisClient.del(lockKey);
               }
-             
+
               break;
             case "call_cancel_by_astrologer":
               console.log("comming in call call_cancel_by_astrologer");
@@ -388,9 +386,18 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 `${sanitizeHtml(data.userName || "")} wants to chat with you.`,
                 {
                   type: "chat",
-                  roomId,
-                  astroId,
-                  userId: data.user_id,
+                  userName: sanitizeHtml(data.userName || ""),
+                  gender: data.gender,
+                  dateOfBirth: data.dateOfBirth,
+                  timeOfBirth: data.timeOfBirth,
+                  occupation: sanitizeHtml(data.occupation || ""),
+                  location: sanitizeHtml(data.location || ""),
+                  astro_id: astroId,
+                  user_id: data.user_id,
+                  room_id: roomId,
+                  maximum_time: data.maximum_time,
+                  user_image: data.user_image,
+                  source: data.source,
                 },
               );
             }
@@ -549,7 +556,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
         // OPTIONAL: send latest queue position immediately
         try {
-          
         } catch (err) {
           console.error("Rejoin queue error:", err);
         }
@@ -702,8 +708,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
           message: "User has cancelled the call request",
         });
       });
-
-     
 
       onSafe("autodisconnect", async (data) => {
         const roomId = String(data.room_id);

@@ -443,34 +443,63 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
       });
       if (existingTx) return;
 
-      await prisma.$transaction(async (tx) => {
-        const session = await tx.session.findUnique({
-          where: { id: parsed.sessionId },
+      const session = await tx.session.findUnique({
+          where: {
+            id: parsed.sessionId,
+          },
+          include: {
+            astrologer: {
+              include: {
+                pricing: {
+                  where: {
+                    type: "CALL",
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
         });
 
-        if (!session) throw new Error("Session not found");
+        if (!session) {
+          throw new Error("Session not found");
+        }
 
-        // Prevent duplicate execution
-        if (session.status === "COMPLETED") return;
+        if (session.status === "COMPLETED") {
+          return;
+        }
 
         // Duration
+        
         const now = new Date();
         const startedAt = new Date(session.startedAt);
-        const durationSec = Math.floor((now - startedAt) / 1000);
 
+        const durationSec = Math.floor((now - startedAt) / 1000);
         const ratePerMin = session.ratePerMin || 1;
 
         let coinsDeducted = 0;
 
-        if (durationSec <= 30) {
-          coinsDeducted = ratePerMin; // minimum 1 min
+        // First 30 seconds are free
+        if (durationSec < 30) {
+          coinsDeducted = 0;
         } else {
-          const durationMin = durationSec / 60;
-          coinsDeducted = Math.ceil(durationMin * ratePerMin);
+          // Remove free 30 seconds and round up remaining time
+          const billableMinutes = Math.ceil((durationSec - 30) / 60);
+          coinsDeducted = billableMinutes * ratePerMin;
         }
 
-        // Commission 50%
-        const commission = Math.floor(coinsDeducted * 0.5);
+        const chatPricing = session.astrologer.pricing[0];
+
+        if (!chatPricing) {
+          throw new Error("Chat pricing not configured");
+        }
+
+        const commissionPercent = chatPricing.commissionPercent ?? 50;
+
+        const commission = Math.floor(
+          (coinsDeducted * commissionPercent) / 100,
+        );
+
         const coinsEarned = coinsDeducted - commission;
 
         // USER WALLET (must exist)

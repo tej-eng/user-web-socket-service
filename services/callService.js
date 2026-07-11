@@ -443,7 +443,9 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
       });
       if (existingTx) return;
 
-      const session = await tx.session.findUnique({
+      await prisma.$transaction(async (tx) => {
+
+       const session = await tx.session.findUnique({
           where: {
             id: parsed.sessionId,
           },
@@ -452,7 +454,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
               include: {
                 pricing: {
                   where: {
-                    type: "CALL",
+                    type: "CHAT",
                     isActive: true,
                   },
                 },
@@ -469,9 +471,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           return;
         }
 
-        // Duration
-        
-        const now = new Date();
+                const now = new Date();
         const startedAt = new Date(session.startedAt);
 
         const durationSec = Math.floor((now - startedAt) / 1000);

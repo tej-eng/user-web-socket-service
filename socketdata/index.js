@@ -461,9 +461,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 `${sanitizeHtml(data.userName || "")} is calling you.`,
                 {
                   type: "call",
-                  roomId,
-                  astroId,
-                  userId: data.user_id,
+                  room_id: roomId,
+                  callerId: data.user_id,
+                  receiverId: astroId,
+                  callTime: data.maximum_time,
+                  userName: data.userName,
                 },
               );
             }

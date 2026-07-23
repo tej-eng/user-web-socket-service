@@ -728,21 +728,23 @@ export const finalizeChatSessionByAdmin = async (
       });
     }
     console.log("finalizeChatSessionByAdmin----4444-----:", roomId, astroId);
+
     /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
     await redis.del(`chat_messages:${roomId}`);
-
+console.log("finalizeChatSessionByAdmin----4444--aaaaa---:", roomId, astroId);
     const currentRoom = await redis.get(`current_chat:${astroId}`);
-
+console.log("finalizeChatSessionByAdmin----4444--bbbbbbb---:", roomId, astroId);
     if (currentRoom) {
       await redis.del(`current_chat:${astroId}`);
     }
-
+console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
     /* =========================
        COMPLETE SESSION + WALLET
     ========================= */
     if (parsedActiveChat) {
+      console.log("finalizeChatSessionByAdmin----4444----dddd-:", roomId, astroId);
       const parsed = parsedActiveChat;
 
       lockKey = `finalize_lock:${parsed.sessionId}`;

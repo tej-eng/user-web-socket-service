@@ -619,7 +619,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
       parsedActiveChat = JSON.parse(activeChatData);
       activeSessionId = parsedActiveChat.sessionId;
     }
-
+    console.log("finalizeChatSessionByAdmin----1111111-----:",roomId, astroId);
     /* =========================
        GET ALL MESSAGES FROM REDIS
     ========================= */
@@ -645,7 +645,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
         keyword: true,
       },
     });
-
+console.log("finalizeChatSessionByAdmin-------2222222--:",roomId, astroId);
     const fraudKeywords = fraudFlags.map((f) => f.keyword.toLowerCase().trim());
 
     const fraudLogs = [];
@@ -685,6 +685,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
     /* =========================
        SAVE MESSAGES
     ========================= */
+    console.log("finalizeChatSessionByAdmin-------3333333--:",roomId, astroId);
     if (parsedMessages.length > 0) {
       await prisma.message.createMany({
         data: parsedMessages.map((msg) => ({
@@ -721,7 +722,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
         skipDuplicates: true,
       });
     }
-
+console.log("finalizeChatSessionByAdmin----4444-----:",roomId, astroId);
     /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
@@ -775,7 +776,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
             },
           },
         });
-
+console.log("finalizeChatSessionByAdmin-----55555555----:",roomId, astroId);
         if (!session) {
           throw new Error("Session not found");
         }
@@ -828,7 +829,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
         });
 
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
-
+console.log("finalizeChatSessionByAdmin-----6666----:",roomId, astroId);
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -932,6 +933,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
         /* =========================
              UPDATE SESSION
           ========================= */
+          console.log("finalizeChatSessionByAdmin-----7777777777----:",roomId, astroId);
         await Promise.all([
           tx.session.update({
             where: {

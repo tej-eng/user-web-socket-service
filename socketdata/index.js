@@ -11,6 +11,7 @@ import {
   processNextRequest,
   handleReject,
   updateQueuePositions,
+  finalizeChatSessionByAdmin,
 } from "../services/chatService.js";
 import {
   handleAcceptCall,

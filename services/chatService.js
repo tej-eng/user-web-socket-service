@@ -601,6 +601,391 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
+export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId) => {
+  let lockKey = null;
+  let lockValue = null;
+
+  try {
+    /* =========================
+       GET ACTIVE CHAT DATA
+    ========================= */
+    const activeChatData = await redis.get(`active_chat:${roomId}`);
+
+    let parsedActiveChat = null;
+    let activeSessionId = null;
+
+    if (activeChatData) {
+      parsedActiveChat = JSON.parse(activeChatData);
+      activeSessionId = parsedActiveChat.sessionId;
+    }
+
+    /* =========================
+       GET ALL MESSAGES FROM REDIS
+    ========================= */
+    const messages = await redis.lRange(`chat_messages:${roomId}`, 0, -1);
+
+    /* =========================
+       ATTACH SESSION ID
+    ========================= */
+    const parsedMessages = messages.map((m) => {
+      const parsed = JSON.parse(m);
+
+      return {
+        ...parsed,
+        session_id: parsed.session_id || activeSessionId,
+      };
+    });
+
+    /* =========================
+       FRAUD DETECTION LOGIC
+    ========================= */
+    const fraudFlags = await prisma.fraudFlag.findMany({
+      select: {
+        keyword: true,
+      },
+    });
+
+    const fraudKeywords = fraudFlags.map((f) => f.keyword.toLowerCase().trim());
+
+    const fraudLogs = [];
+
+    for (const msg of parsedMessages) {
+      if (!msg.message) continue;
+
+      const messageText = msg.message.toLowerCase();
+
+      const matchedKeywords = fraudKeywords.filter((keyword) =>
+        messageText.includes(keyword),
+      );
+
+      if (matchedKeywords.length > 0) {
+        fraudLogs.push({
+          orderId: msg.msg_id,
+
+          sessionId: msg.session_id || null,
+
+          senderId: msg.sender_id || null,
+
+          senderName: msg.sender || null,
+
+          receiverId: msg.received_id || null,
+
+          receiverName: msg.sender == "user" ? "Astrologer" : "User",
+
+          message: msg.message,
+
+          matchedKeywords,
+
+          status: "PENDING",
+        });
+      }
+    }
+
+    /* =========================
+       SAVE MESSAGES
+    ========================= */
+    if (parsedMessages.length > 0) {
+      await prisma.message.createMany({
+        data: parsedMessages.map((msg) => ({
+          msgId: msg.msg_id,
+
+          roomId: msg.room_id,
+
+          senderId: msg.sender_id,
+
+          receiverId: msg.received_id,
+
+          message: msg.message,
+
+          image: msg.image,
+
+          sender: msg.sender,
+
+          replyTo: msg.replyTo,
+
+          sessionId: msg.session_id || null,
+          time: msg.time,
+        })),
+
+        skipDuplicates: true,
+      });
+    }
+
+    /* =========================
+       SAVE FRAUD LOGS
+    ========================= */
+    if (fraudLogs.length > 0) {
+      await prisma.fraudLog.createMany({
+        data: fraudLogs,
+        skipDuplicates: true,
+      });
+    }
+
+    /* =========================
+       DELETE REDIS CHAT LIST
+    ========================= */
+    await redis.del(`chat_messages:${roomId}`);
+
+    const currentRoom = await redis.get(`current_chat:${astroId}`);
+
+    if (currentRoom) {
+      await redis.del(`current_chat:${astroId}`);
+    }
+
+    /* =========================
+       COMPLETE SESSION + WALLET
+    ========================= */
+    if (parsedActiveChat) {
+      const parsed = parsedActiveChat;
+
+      lockKey = `finalize_lock:${parsed.sessionId}`;
+
+      lockValue = `${Date.now()}_${Math.random()}`;
+
+      const isLocked = await redis.set(lockKey, lockValue, "NX", "EX", 30);
+
+      if (!isLocked) {
+        return;
+      }
+
+      const existingTx = await prisma.walletTransaction.findFirst({
+        where: {
+          sessionId: parsed.sessionId,
+        },
+      });
+
+      if (existingTx) return;
+
+      await prisma.$transaction(async (tx) => {
+        const session = await tx.session.findUnique({
+          where: {
+            id: parsed.sessionId,
+          },
+          include: {
+            astrologer: {
+              include: {
+                pricing: {
+                  where: {
+                    type: "CHAT",
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!session) {
+          throw new Error("Session not found");
+        }
+
+        if (session.status === "COMPLETED") {
+          return;
+        }
+
+        /* =========================
+             CALCULATE DURATION
+          ========================= */
+
+        const now = new Date();
+        const startedAt = new Date(session.startedAt);
+
+        const durationSec = Math.floor((now - startedAt) / 1000);
+        const ratePerMin = session.ratePerMin || 1;
+
+        let coinsDeducted = 0;
+
+        // First 30 seconds are free
+        if (durationSec < 30) {
+          coinsDeducted = 0;
+        } else {
+          // Remove free 30 seconds and round up remaining time
+          const billableMinutes = Math.ceil((durationSec - 30) / 60);
+          coinsDeducted = billableMinutes * ratePerMin;
+        }
+
+        const chatPricing = session.astrologer.pricing[0];
+
+        if (!chatPricing) {
+          throw new Error("Chat pricing not configured");
+        }
+
+        const commissionPercent = chatPricing.commissionPercent ?? 50;
+
+        const commission = Math.floor(
+          (coinsDeducted * commissionPercent) / 100,
+        );
+
+        const coinsEarned = coinsDeducted - commission;
+        /* =========================
+             USER WALLET
+          ========================= */
+        const userWallet = await tx.userWallet.findUnique({
+          where: {
+            userId: session.userId,
+          },
+        });
+
+        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+
+        if (!userWallet) {
+          throw new Error("User wallet not found");
+        }
+
+        /* =========================
+             ASTRO WALLET
+          ========================= */
+        // const astroWallet = await tx.astrologerWallet.upsert({
+        //   where: {
+        //     astrologerId: session.astrologerId,
+        //   },
+
+        //   update: {},
+
+        //   create: {
+        //     astrologerId: session.astrologerId,
+
+        //     balanceCoins: 0,
+
+        //     totalEarned: 0,
+
+        //     totalWithdrawn: 0,
+        //   },
+        // });
+
+        /* =========================
+             BALANCE CHECK
+          ========================= */
+        // if (userWallet.balanceCoins < coinsDeducted) {
+        //   throw new Error("Insufficient balance");
+        // }
+
+        /* =========================
+             USER DEBIT
+          ========================= */
+        // await tx.userWallet.update({
+        //   where: {
+        //     id: userWallet.id,
+        //   },
+
+        //   data: {
+        //     balanceCoins: {
+        //       decrement: coinsDeducted,
+        //     },
+        //   },
+        // });
+
+        /* =========================
+             ASTRO CREDIT
+          ========================= */
+        // await tx.astrologerWallet.update({
+        //   where: {
+        //     id: astroWallet.id,
+        //   },
+
+        //   data: {
+        //     balanceCoins: {
+        //       increment: coinsEarned,
+        //     },
+
+        //     totalEarned: {
+        //       increment: coinsEarned,
+        //     },
+        //   },
+        // });
+
+        /* =========================
+             USER TRANSACTION
+          ========================= */
+        // await tx.walletTransaction.create({
+        //   data: {
+        //     userWalletId: userWallet.id,
+
+        //     sessionId: session.id,
+
+        //     type: "DEBIT",
+
+        //     coins: coinsDeducted,
+
+        //     description: "Chat session deduction",
+        //   },
+        // });
+
+        /* =========================
+             ASTRO TRANSACTION
+          ========================= */
+        // await tx.walletTransaction.create({
+        //   data: {
+        //     astrologerWalletId: astroWallet.id,
+
+        //     sessionId: session.id,
+
+        //     type: "CREDIT",
+
+        //     coins: coinsEarned,
+
+        //     description: "Chat session earning",
+        //   },
+        // });
+
+        /* =========================
+             UPDATE SESSION
+          ========================= */
+        await Promise.all([
+          tx.session.update({
+            where: {
+              id: session.id,
+            },
+            data: {
+              status: "COMPLETED",
+              endedAt: now,
+              durationSec,
+              coinsDeducted,
+              coinsEarned,
+              commission,
+              by:"chat ended by admin"
+            },
+          }),
+
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
+
+        //update  PricingConfig usage count
+      });
+
+      /* =========================
+         DELETE ACTIVE CHAT
+      ========================= */
+      await redis.del(`active_chat:${roomId}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("finalizeChatSession error:", error);
+
+    throw error;
+  } finally {
+    try {
+      if (lockKey && lockValue) {
+        const currentValue = await redis.get(lockKey);
+
+        if (currentValue === lockValue) {
+          await redis.del(lockKey);
+        }
+      }
+    } catch (err) {
+      console.error("Lock cleanup error:", err);
+    }
+  }
+};
+
 export const processNextRequest = async (astrologerId, redis, pubClient) => {
   try {
     const queueKey = `queue:${astrologerId}`;

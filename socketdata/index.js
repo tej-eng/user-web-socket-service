@@ -662,7 +662,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         try {
           console.log("chatCompletedByAdmin");
           const roomId = data.room_id;
-          await finalizeChatSession(roomId, prisma, redisClient, data.astroId);
+          await finalizeChatSessionByAdmin(roomId, prisma, redisClient, data.astroId);
 
           socket.emit("chatCompleted", {
             message: `You have left the ${roomId} chat.`,

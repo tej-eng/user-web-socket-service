@@ -872,25 +872,14 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
 
   //-------START CODE FOR LIVE CHAT-------------
-  onSafe.on("live_message", async (data) => {
-  console.log("Live Chat:", data);
+//   onSafe.on("live_message", async (data) => {
+//   console.log("Live Chat:", data);
 
-  safePublish(pubClient, "live_message", {
-          data
-        });
+//   safePublish(pubClient, "live_message", {
+//           data
+//         });
 
-  //io.to(data.channelName).emit("live_message", data);
-
-  // Optional: save to database
-  // await prisma.liveChat.create({
-  //   data: {
-  //     channelName: data.channelName,
-  //     senderId: data.senderId,
-  //     senderName: data.senderName,
-  //     message: data.message,
-  //   },
-  // });
-});
+// });
   //-------END CODE FOR LIVE CHAT--------
 }
 

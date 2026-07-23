@@ -602,6 +602,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 };
 
 export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId) => {
+  console.log("finalizeChatSessionByAdmin---------:",roomId, prisma, redis, astroId);
   let lockKey = null;
   let lockValue = null;
 

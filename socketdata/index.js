@@ -658,6 +658,71 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         }
       });
 
+      socket.on("chatCompletedByAdmin", async (data) => {
+        try {
+          console.log("chatCompletedByAdmin");
+          const roomId = data.room_id;
+          await finalizeChatSession(roomId, prisma, redisClient, data.astroId);
+
+          socket.emit("chatCompleted", {
+            message: `You have left the ${roomId} chat.`,
+            roomId: roomId,
+            status: "leave",
+          });
+          socket.leave(roomId);
+
+          pubClient.publish(
+            "end_chat_by_user",
+            JSON.stringify({
+              message: `User has left the ${roomId} chat.`,
+              roomId: roomId,
+              status: "leave",
+            }),
+          );
+          let astroId = data.astroId;
+          const currentRoom = await pubClient.get(
+            `current_chat:${data.astroId}`,
+          );
+          if (currentRoom) {
+            await pubClient.del(`current_chat:${astroId}`);
+          }
+          //------DELETE KEY AFTER USER CHAT END--------
+          let queueKey = `queue:${data.astroId}`;
+          const queueList = await pubClient.lRange(queueKey, 0, -1);
+          let itemToRemove = null;
+
+          for (const item of queueList) {
+            const parsed = JSON.parse(item);
+            if (parsed.roomId === data.room_id) {
+              itemToRemove = item;
+              break;
+            }
+          }
+
+          if (itemToRemove) {
+            const check = await pubClient.lRem(queueKey, 1, itemToRemove);
+          }
+
+          const res = await updateQueuePositions(
+            queueKey,
+            redisClient,
+            pubClient,
+          );
+          if (res) {
+            let queueLength = await pubClient.lLen(queueKey);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextRequest(astroId, redisClient, pubClient);
+              }, 5000);
+            }
+          }
+
+          //-------END CODE FOR DELETE KEY AFTER USER CHAT END-------
+        } catch (error) {
+          console.error("chat complete error", error);
+        }
+      });
+
       onSafe("cancel_chat_request", async (data) => {
         console.log("cancelled by user");
         const res = await handleReject(
@@ -804,6 +869,29 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
   } catch (err) {
     logEvent("socketHandlerCritical", err.stack, true);
   }
+
+
+  //-------START CODE FOR LIVE CHAT-------------
+  onSafe.on("live_message", async (data) => {
+  console.log("Live Chat:", data);
+
+  safePublish(pubClient, "live_message", {
+          data
+        });
+
+  //io.to(data.channelName).emit("live_message", data);
+
+  // Optional: save to database
+  // await prisma.liveChat.create({
+  //   data: {
+  //     channelName: data.channelName,
+  //     senderId: data.senderId,
+  //     senderName: data.senderName,
+  //     message: data.message,
+  //   },
+  // });
+});
+  //-------END CODE FOR LIVE CHAT--------
 }
 
 export default socketHandler;

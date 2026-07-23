@@ -601,8 +601,13 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
-export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId) => {
-  console.log("finalizeChatSessionByAdmin---------:",roomId, astroId);
+export const finalizeChatSessionByAdmin = async (
+  roomId,
+  prisma,
+  redis,
+  astroId,
+) => {
+  console.log("finalizeChatSessionByAdmin---------:", roomId, astroId);
   let lockKey = null;
   let lockValue = null;
 
@@ -619,7 +624,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
       parsedActiveChat = JSON.parse(activeChatData);
       activeSessionId = parsedActiveChat.sessionId;
     }
-    console.log("finalizeChatSessionByAdmin----1111111-----:",roomId, astroId);
+    console.log("finalizeChatSessionByAdmin----1111111-----:", roomId, astroId);
     /* =========================
        GET ALL MESSAGES FROM REDIS
     ========================= */
@@ -645,7 +650,7 @@ export const finalizeChatSessionByAdmin = async (roomId, prisma, redis, astroId)
         keyword: true,
       },
     });
-console.log("finalizeChatSessionByAdmin-------2222222--:",roomId, astroId);
+    console.log("finalizeChatSessionByAdmin-------2222222--:", roomId, astroId);
     const fraudKeywords = fraudFlags.map((f) => f.keyword.toLowerCase().trim());
 
     const fraudLogs = [];
@@ -685,7 +690,7 @@ console.log("finalizeChatSessionByAdmin-------2222222--:",roomId, astroId);
     /* =========================
        SAVE MESSAGES
     ========================= */
-    console.log("finalizeChatSessionByAdmin-------3333333--:",roomId, astroId);
+    console.log("finalizeChatSessionByAdmin-------3333333--:", roomId, astroId);
     if (parsedMessages.length > 0) {
       await prisma.message.createMany({
         data: parsedMessages.map((msg) => ({
@@ -722,7 +727,7 @@ console.log("finalizeChatSessionByAdmin-------2222222--:",roomId, astroId);
         skipDuplicates: true,
       });
     }
-console.log("finalizeChatSessionByAdmin----4444-----:",roomId, astroId);
+    console.log("finalizeChatSessionByAdmin----4444-----:", roomId, astroId);
     /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
@@ -749,7 +754,7 @@ console.log("finalizeChatSessionByAdmin----4444-----:",roomId, astroId);
       if (!isLocked) {
         return;
       }
-
+      console.log("finalizeChatSessionByAdmin----4444--55555---:", roomId, astroId);
       const existingTx = await prisma.walletTransaction.findFirst({
         where: {
           sessionId: parsed.sessionId,
@@ -757,7 +762,7 @@ console.log("finalizeChatSessionByAdmin----4444-----:",roomId, astroId);
       });
 
       if (existingTx) return;
-
+     console.log("finalizeChatSessionByAdmin----4444----6666-:", roomId, astroId);
       await prisma.$transaction(async (tx) => {
         const session = await tx.session.findUnique({
           where: {
@@ -776,7 +781,11 @@ console.log("finalizeChatSessionByAdmin----4444-----:",roomId, astroId);
             },
           },
         });
-console.log("finalizeChatSessionByAdmin-----55555555----:",roomId, astroId);
+        console.log(
+          "finalizeChatSessionByAdmin-----55555555----:",
+          roomId,
+          astroId,
+        );
         if (!session) {
           throw new Error("Session not found");
         }
@@ -829,7 +838,11 @@ console.log("finalizeChatSessionByAdmin-----55555555----:",roomId, astroId);
         });
 
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
-console.log("finalizeChatSessionByAdmin-----6666----:",roomId, astroId);
+        console.log(
+          "finalizeChatSessionByAdmin-----6666----:",
+          roomId,
+          astroId,
+        );
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -933,7 +946,11 @@ console.log("finalizeChatSessionByAdmin-----6666----:",roomId, astroId);
         /* =========================
              UPDATE SESSION
           ========================= */
-          console.log("finalizeChatSessionByAdmin-----7777777777----:",roomId, astroId);
+        console.log(
+          "finalizeChatSessionByAdmin-----7777777777----:",
+          roomId,
+          astroId,
+        );
         await Promise.all([
           tx.session.update({
             where: {
@@ -946,7 +963,7 @@ console.log("finalizeChatSessionByAdmin-----6666----:",roomId, astroId);
               coinsDeducted,
               coinsEarned,
               commission,
-              by:"chat ended by admin"
+              by: "chat ended by admin",
             },
           }),
 

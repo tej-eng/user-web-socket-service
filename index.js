@@ -13,7 +13,6 @@ import path from "path";
 import cookie from "cookie";
 
 dotenv.config();
-
 const FRONTEND_URL = "https://dhwaniastro.com";
 
 const app = express();

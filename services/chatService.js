@@ -987,6 +987,78 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
       ========================= */
       await redis.del(`active_chat:${roomId}`);
     }
+    else{
+      await prisma.$transaction(async (tx) => {
+        const session = await tx.session.findUnique({
+          where: {
+            id: parsed.sessionId,
+          },
+          include: {
+            astrologer: {
+              include: {
+                pricing: {
+                  where: {
+                    type: "CHAT",
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+        console.log(
+          "finalizeChatSessionByAdmin-----55555555----:",
+          roomId,
+          astroId,
+        );
+        if (!session) {
+          throw new Error("Session not found");
+        }
+
+        if (session.status === "COMPLETED") {
+          return;
+        }
+
+        /* =========================
+             CALCULATE DURATION
+          ========================= */
+
+        
+
+
+        /* =========================
+             UPDATE SESSION
+          ========================= */
+        console.log(
+          "finalizeChatSessionByAdmin-----7777777777----:",
+          roomId,
+          astroId,
+        );
+        await Promise.all([
+          tx.session.update({
+            where: {
+              id: session.id,
+            },
+            data: {
+              status: "COMPLETED",
+              endedAt: now,
+              by: "chat ended by admin",
+            },
+          }),
+
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
+
+        //update  PricingConfig usage count
+      });
+    }
 
     return true;
   } catch (error) {

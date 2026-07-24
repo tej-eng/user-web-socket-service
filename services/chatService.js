@@ -1028,6 +1028,9 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
           session.id,
           session.astrologerId
         );
+        const now = new Date();
+        const startedAt = new Date(session.startedAt);
+        const durationSec = Math.floor((now - startedAt) / 1000);
         await Promise.all([
           tx.session.update({
             where: {

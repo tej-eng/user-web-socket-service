@@ -661,7 +661,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       socket.on("chatCompletedByAdmin", async (data) => {
         try {
-          console.log("chatCompletedByAdmin");
+          console.log("chatCompletedByAdmin",data);
           const roomId = data.room_id;
           await finalizeChatSessionByAdmin(roomId, prisma, redisClient, data.astroId);
           socket.emit("chatCompleted", {

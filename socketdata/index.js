@@ -778,12 +778,11 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       socket.on("callCompletedByAdmin", async (data) => {
-        console.log("callCompletedByAdmin",data);  //call_ended_by_admin
-         socket.emit("call_ended_by_admin", {
+        console.log("callCompletedByAdmin",data);  
+         socket.broadcast.emit("call_ended_by_admin", {
             message: `You have left the ${data.room_id} chat.`,
             roomId: data.room_id,
-            astroId:data.astroId,
-            status: "leave",
+          
           });
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,

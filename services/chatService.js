@@ -606,6 +606,7 @@ export const finalizeChatSessionByAdmin = async (
   prisma,
   redis,
   astroId,
+  sessionId
 ) => {
   console.log("finalizeChatSessionByAdmin---------:", roomId, astroId);
   let lockKey = null;
@@ -991,7 +992,7 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
       await prisma.$transaction(async (tx) => {
         const session = await tx.session.findUnique({
           where: {
-            id: parsed.sessionId,
+            id: sessionId,
           },
           include: {
             astrologer: {
@@ -1019,16 +1020,7 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
           return;
         }
 
-        /* =========================
-             CALCULATE DURATION
-          ========================= */
-
         
-
-
-        /* =========================
-             UPDATE SESSION
-          ========================= */
         console.log(
           "finalizeChatSessionByAdmin-----7777777777----:",
           roomId,

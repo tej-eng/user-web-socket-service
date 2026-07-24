@@ -623,6 +623,167 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
+export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,sessionId) => {
+  let lockKey = null;
+  let lockValue = null;
+  try {
+    /* =========================
+       DELETE REDIS CHAT LIST
+    ========================= */
+    const currentRoom = await redis.get(`current_call:${astroId}`);
+    if (currentRoom) {
+      await redis.del(`current_call:${astroId}`);
+    }
+
+    /* =========================
+   COMPLETE SESSION + WALLET SYNC (ATOMIC)
+========================= */
+    const active_call = await redis.get(`active_call:${roomId}`);
+
+    if (active_call) {
+      const parsed = JSON.parse(active_call);
+
+      lockKey = `finalize_lock:${parsed.sessionId}`;
+      lockValue = `${Date.now()}_${Math.random()}`;
+
+      const isLocked = await redis.set(lockKey, lockValue, "NX", "EX", 30);
+
+      if (!isLocked) {
+        return;
+      }
+
+      const existingTx = await prisma.walletTransaction.findFirst({
+        where: { sessionId: parsed.sessionId },
+      });
+      if (existingTx) return;
+
+      await prisma.$transaction(async (tx) => {
+
+       const session = await tx.session.findUnique({
+          where: {
+            id: parsed.sessionId,
+          },
+          include: {
+            astrologer: {
+              include: {
+                pricing: {
+                  where: {
+                    type: "CALL",
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!session) {
+          throw new Error("Session not found");
+        }
+
+        if (session.status === "COMPLETED") {
+          return;
+        }
+         const now = new Date();
+        // FINAL: update session
+          await Promise.all([
+          tx.session.update({
+            where: {
+              id: session.id,
+            },
+            data: {
+              status: "COMPLETED",
+              endedAt: now,
+              by:"call ended by admin"
+            },
+          }),
+
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
+      });
+      await redis.del(`active_call:${roomId}`);
+    }else{
+      await prisma.$transaction(async (tx) => {
+
+       const session = await tx.session.findUnique({
+          where: {
+            id: sessionId,
+          },
+          include: {
+            astrologer: {
+              include: {
+                pricing: {
+                  where: {
+                    type: "CALL",
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!session) {
+          throw new Error("Session not found");
+        }
+
+        if (session.status === "COMPLETED") {
+          return;
+        }
+        const now = new Date();
+        // FINAL: update session
+          await Promise.all([
+          tx.session.update({
+            where: {
+              id: session.id,
+            },
+            data: {
+              status: "COMPLETED",
+              endedAt: now,
+              by:"call ended by admin"
+            },
+          }),
+
+          tx.astrologer.update({
+            where: {
+              id: session.astrologerId,
+            },
+            data: {
+              isBusy: false,
+            },
+          }),
+        ]);
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error("finalizeCallSession error:", error);
+    throw error;
+  } finally {
+    try {
+      if (lockKey && lockValue) {
+        const currentValue = await redis.get(lockKey);
+
+        // Only delete if THIS process owns the lock
+        if (currentValue === lockValue) {
+          await redis.del(lockKey);
+        }
+      }
+    } catch (err) {
+      console.error("Lock cleanup error:", err);
+    }
+  }
+};
+
+
 export const removeUserFromQueue = async ({ redis, queueKey, roomId }) => {
   try {
     // =========================

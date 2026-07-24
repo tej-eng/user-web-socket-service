@@ -16,6 +16,7 @@ import {
 import {
   handleAcceptCall,
   finalizeCallSession,
+  finalizeCallSessionByAdmin,
   removeUserFromQueue,
   handleCallReject,
 } from "../services/callService.js";
@@ -778,6 +779,32 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       socket.on("callCompletedByAdmin", async (data) => {
         console.log("callCompletedByAdmin",data);
+
+        safePublish(pubClient, "call_ended_by_user", {
+          room_id: data.room_id,
+        });
+
+        finalizeCallSessionByAdmin(data.room_id, prisma, redisClient, data.astroId,data.sessionId);
+        const removeUser = await removeUserFromQueue({
+          redis: redisClient,
+          queueKey: `queue:${data.astroId}`,
+          roomId: data.room_id,
+        });
+        if (removeUser) {
+          const response = await updateQueuePositions(
+            `queue:${data.astroId}`,
+            redisClient,
+            pubClient,
+          );
+          if (response) {
+            let queueLength = await pubClient.lLen(`queue:${data.astroId}`);
+            if (queueLength > 0) {
+              setTimeout(async () => {
+                await processNextRequest(data.astroId, redisClient, pubClient);
+              }, 5000);
+            }
+          }
+        }
       });
 
       onSafe("autodisconnect", async (data) => {

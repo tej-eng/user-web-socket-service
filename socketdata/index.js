@@ -776,6 +776,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
+      socket.on("callCompletedByAdmin", async (data) => {
+        console.log("callCompletedByAdmin",data);
+      });
+
       onSafe("autodisconnect", async (data) => {
         const roomId = String(data.room_id);
         const astroId = String(data.astroid);

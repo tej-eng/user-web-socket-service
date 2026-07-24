@@ -608,7 +608,6 @@ export const finalizeChatSessionByAdmin = async (
   astroId,
   sessionId
 ) => {
-  console.log("finalizeChatSessionByAdmin---------:", roomId, astroId);
   let lockKey = null;
   let lockValue = null;
 
@@ -625,7 +624,6 @@ export const finalizeChatSessionByAdmin = async (
       parsedActiveChat = JSON.parse(activeChatData);
       activeSessionId = parsedActiveChat.sessionId;
     }
-    console.log("finalizeChatSessionByAdmin----1111111-----:", roomId, astroId);
     /* =========================
        GET ALL MESSAGES FROM REDIS
     ========================= */
@@ -651,7 +649,6 @@ export const finalizeChatSessionByAdmin = async (
         keyword: true,
       },
     });
-    console.log("finalizeChatSessionByAdmin-------2222222--:", roomId, astroId);
     const fraudKeywords = fraudFlags.map((f) => f.keyword.toLowerCase().trim());
 
     const fraudLogs = [];
@@ -691,7 +688,6 @@ export const finalizeChatSessionByAdmin = async (
     /* =========================
        SAVE MESSAGES
     ========================= */
-    console.log("finalizeChatSessionByAdmin-------3333333--:", roomId, astroId);
     if (parsedMessages.length > 0) {
       await prisma.message.createMany({
         data: parsedMessages.map((msg) => ({
@@ -728,24 +724,19 @@ export const finalizeChatSessionByAdmin = async (
         skipDuplicates: true,
       });
     }
-    console.log("finalizeChatSessionByAdmin----4444-----:", roomId, astroId);
 
     /* =========================
        DELETE REDIS CHAT LIST
     ========================= */
     await redis.del(`chat_messages:${roomId}`);
-console.log("finalizeChatSessionByAdmin----4444--aaaaa---:", roomId, astroId);
     const currentRoom = await redis.get(`current_chat:${astroId}`);
-console.log("finalizeChatSessionByAdmin----4444--bbbbbbb---:", roomId, astroId);
     if (currentRoom) {
       await redis.del(`current_chat:${astroId}`);
     }
-console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
     /* =========================
        COMPLETE SESSION + WALLET
     ========================= */
     if (parsedActiveChat) {
-      console.log("finalizeChatSessionByAdmin----4444----dddd-:", roomId, astroId);
       const parsed = parsedActiveChat;
 
       lockKey = `finalize_lock:${parsed.sessionId}`;
@@ -757,7 +748,6 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
       if (!isLocked) {
         return;
       }
-      console.log("finalizeChatSessionByAdmin----4444--55555---:", roomId, astroId);
       const existingTx = await prisma.walletTransaction.findFirst({
         where: {
           sessionId: parsed.sessionId,
@@ -765,7 +755,6 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
       });
 
       if (existingTx) return;
-     console.log("finalizeChatSessionByAdmin----4444----6666-:", roomId, astroId);
       await prisma.$transaction(async (tx) => {
         const session = await tx.session.findUnique({
           where: {
@@ -989,6 +978,7 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
       await redis.del(`active_chat:${roomId}`);
     }
     else{
+      //if chat are stuck in session and status is ongoing
       await prisma.$transaction(async (tx) => {
         const session = await tx.session.findUnique({
           where: {
@@ -1007,11 +997,7 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
             },
           },
         });
-        console.log(
-          "finalizeChatSessionByAdmin-----55555555----:",
-          roomId,
-          astroId,
-        );
+        
         if (!session) {
           throw new Error("Session not found");
         }
@@ -1019,15 +1005,7 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
         if (session.status === "COMPLETED") {
           return;
         }
-
-        
-        console.log(
-          "finalizeChatSessionByAdmin-----7777777777----:",
-          roomId,
-          astroId,
-          session.id,
-          session.astrologerId
-        );
+       
         const now = new Date();
         const startedAt = new Date(session.startedAt);
         const durationSec = Math.floor((now - startedAt) / 1000);

@@ -1025,6 +1025,8 @@ console.log("finalizeChatSessionByAdmin----4444---cccccc--:", roomId, astroId);
           "finalizeChatSessionByAdmin-----7777777777----:",
           roomId,
           astroId,
+          session.id,
+          session.astrologerId
         );
         await Promise.all([
           tx.session.update({

@@ -314,7 +314,9 @@ model Astrologer {
   serviceMappings   ServiceAstrologer[]
   liveStreams       LiveStream[]
   callRecordings CallRecording[]
-isDeleted Boolean @default(false)
+  isDeleted Boolean @default(false)
+  payouts AstrologerPayout[] 
+  tax AstrologerTax?
   @@index([rating])
   @@index([experience])
 }
@@ -691,6 +693,9 @@ model AstrologerWallet {
   astrologer     Astrologer          @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
   balanceCoins   Float               @default(0)
   totalEarned    Int                 @default(0)
+  totalCommission Float @default(0)
+  totalPaid Float @default(0)
+  pendingAmount Float @default(0)
   totalWithdrawn Int                 @default(0)
   withdrawals    Withdrawal[]
   createdAt      DateTime            @default(now())
@@ -723,7 +728,7 @@ model WalletTransaction {
   coins       Int
   amount      Float?
   description String?
- updatedBalance Float?
+  updatedBalance Float?
   createdAt DateTime @default(now())
 
   //  PREVENT duplicate credit from same payment
@@ -788,6 +793,7 @@ model Session {
 
   remedies SessionRemedy[]
   callRecordings CallRecording[]
+  payoutSessions AstrologerPayoutSession[]
 
 
   createdAt DateTime @default(now())
@@ -799,35 +805,63 @@ model Session {
 }
 
 model Payment {
+
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user User @relation(fields:[userId],references:[id])
 
   rechargePackId String
-  rechargePack   RechargePack @relation(fields: [rechargePackId], references: [id])
+  rechargePack RechargePack @relation(fields:[rechargePackId],references:[id])
 
-  paymentOrderId String       @unique
-  paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id])
+  paymentOrderId String @unique
+  paymentOrder PaymentOrder @relation(fields:[paymentOrderId],references:[id])
 
   amount Float
-  coins  Int
+  coins Int
 
   provider PaymentProvider
 
-  razorpayOrderId   String
+  razorpayOrderId String
   razorpayPaymentId String @unique
 
   status PaymentStatus
 
+  //--------------------------------
+  invoiceNo String? @unique
+
+  taxableAmount Float?
+
+  gstRate Float?
+
+  cgst Float?
+
+  sgst Float?
+
+  igst Float?
+
+  totalTax Float?
+
+  totalAmount Float?
+  pgChargeRate Float?
+  pgCharge Float?
+  pgIgst Float?
+  pgTotal Float?
+  receivableAmount Float?
+
+  //--------------------------------
+
+  country String?
+  state String?
+  city String?
+
+  //--------------------------------
+
+  platform String?
+
   createdAt DateTime @default(now())
 
-  // ADD THIS
   walletTransactions WalletTransaction[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([razorpayOrderId])
 }
 
 model PaymentOrder {
@@ -1525,11 +1559,14 @@ model LiveStream {
   id String @id @default(uuid())
 
   astrologerId String
-  astrologer   Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
+  astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
 
   title String
 
   channelName String
+
+  // ADD THIS
+  chatRoomId String?
 
   status LiveStatus @default(SCHEDULED)
 
@@ -1614,4 +1651,107 @@ model CouponRedemption {
   discount Float
 
   createdAt DateTime @default(now())
+}
+
+model Skill {
+  id        String   @id @default(cuid())
+
+  name      String
+  slug      String   @unique
+
+  sortOrder Int      @default(0)
+
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Problem {
+  id        String   @id @default(cuid())
+
+  name      String
+  slug      String   @unique
+
+  sortOrder Int      @default(0)
+
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AstrologerPayout {
+
+  id String @id @default(uuid())
+
+  astrologerId String
+  astrologer Astrologer @relation(fields:[astrologerId],references:[id])
+
+  fromDate DateTime
+  toDate DateTime
+
+  totalRevenue Float
+
+  commissionPercent Float
+  commission Float
+
+  earning Float
+
+  pgChargeRate Float
+  pgCharge Float
+
+  gstRate Float
+
+  igst Float?
+  cgst Float?
+  sgst Float?
+
+  pgTotal Float
+
+  grossAmount Float
+
+  tdsPercent Float
+  tdsAmount Float
+
+  lastPaidAmount Float?
+
+  payableAmount Float
+
+  transactionRef String?
+
+  paymentDate DateTime?
+
+  status WithdrawalStatus
+
+  createdAt DateTime @default(now())
+
+  payoutItems AstrologerPayoutSession[]
+}
+
+
+model AstrologerTax {
+  id String @id @default(uuid())
+
+  astrologerId String @unique
+  astrologer Astrologer @relation(fields: [astrologerId], references: [id], onDelete: Cascade)
+
+  gstNumber String?
+  state String
+  panNumber String
+
+  tdsPercent Float
+  gstPercent Float
+}
+
+model AstrologerPayoutSession {
+
+  id String @id @default(uuid())
+
+  payoutId String
+  payout AstrologerPayout @relation(fields:[payoutId],references:[id])
+
+  sessionId String
+  session Session @relation(fields:[sessionId],references:[id])
+
+  @@unique([payoutId, sessionId])
 }

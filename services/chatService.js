@@ -427,12 +427,14 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         }
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
+        console.log("commissionPercent-----: ",commissionPercent);
 
         const commission = Math.floor(
           (coinsDeducted * commissionPercent) / 100,
         );
-
+        console.log("commission----:",commission);
         const coinsEarned = coinsDeducted - commission;
+        console.log("----coinsEarned-----:",coinsEarned);
         /* =========================
              USER WALLET
           ========================= */

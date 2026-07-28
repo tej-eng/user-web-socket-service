@@ -117,14 +117,9 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(activeOffer.offer.price);
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-  } else if (chatPricing.offerPrice && Number(chatPricing.offerPrice) > 0) {
-    /**
-     * ASTROLOGER OFFER PRICE
-     */
-    ratePerMin = Number(chatPricing.offerPrice);
+  } 
+  
 
-    appliedOffer = "ASTROLOGER_OFFER_PRICE";
-  }
 
   console.log("Final Rate Per Min:", ratePerMin);
 
@@ -436,7 +431,8 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           (coinsDeducted * commissionPercent) / 100,
         );
         console.log("commission----:",commission);
-        const coinsEarned = coinsDeducted - commission;
+        //const coinsEarned = coinsDeducted - commission;
+        const coinsEarned = coinsDeducted;
         console.log("----coinsEarned-----:",coinsEarned);
         /* =========================
              USER WALLET
@@ -510,10 +506,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 
             totalEarned: {
               increment: coinsEarned,
-            },
-
-            totalCommission: {
-              increment: commission,
             },
 
             pendingAmount: {

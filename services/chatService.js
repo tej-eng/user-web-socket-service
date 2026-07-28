@@ -419,6 +419,9 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           const billableMinutes = Math.ceil((durationSec - 30) / 60);
           coinsDeducted = billableMinutes * ratePerMin;
         }
+        console.log("durationSec----:",durationSec);
+        console.log("ratePerMin----:",ratePerMin);
+        console.log("coinsDeducted----:",coinsDeducted);
 
         const chatPricing = session.astrologer.pricing[0];
 

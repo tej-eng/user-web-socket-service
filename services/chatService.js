@@ -498,13 +498,20 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           where: {
             id: astroWallet.id,
           },
-
           data: {
             balanceCoins: {
               increment: coinsEarned,
             },
 
             totalEarned: {
+              increment: coinsEarned,
+            },
+
+            totalCommission: {
+              increment: commission,
+            },
+
+            pendingAmount: {
               increment: coinsEarned,
             },
           },
@@ -606,7 +613,7 @@ export const finalizeChatSessionByAdmin = async (
   prisma,
   redis,
   astroId,
-  sessionId
+  sessionId,
 ) => {
   let lockKey = null;
   let lockValue = null;
@@ -773,11 +780,6 @@ export const finalizeChatSessionByAdmin = async (
             },
           },
         });
-        console.log(
-          "finalizeChatSessionByAdmin-----55555555----:",
-          roomId,
-          astroId,
-        );
         if (!session) {
           throw new Error("Session not found");
         }
@@ -830,11 +832,6 @@ export const finalizeChatSessionByAdmin = async (
         });
 
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
-        console.log(
-          "finalizeChatSessionByAdmin-----6666----:",
-          roomId,
-          astroId,
-        );
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -938,11 +935,7 @@ export const finalizeChatSessionByAdmin = async (
         /* =========================
              UPDATE SESSION
           ========================= */
-        console.log(
-          "finalizeChatSessionByAdmin-----7777777777----:",
-          roomId,
-          astroId,
-        );
+        
         await Promise.all([
           tx.session.update({
             where: {
@@ -976,8 +969,7 @@ export const finalizeChatSessionByAdmin = async (
          DELETE ACTIVE CHAT
       ========================= */
       await redis.del(`active_chat:${roomId}`);
-    }
-    else{
+    } else {
       //if chat are stuck in session and status is ongoing
       await prisma.$transaction(async (tx) => {
         const session = await tx.session.findUnique({
@@ -997,7 +989,7 @@ export const finalizeChatSessionByAdmin = async (
             },
           },
         });
-        
+
         if (!session) {
           throw new Error("Session not found");
         }
@@ -1005,7 +997,7 @@ export const finalizeChatSessionByAdmin = async (
         if (session.status === "COMPLETED") {
           return;
         }
-       
+
         const now = new Date();
         await Promise.all([
           tx.session.update({

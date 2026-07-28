@@ -79,34 +79,28 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(pricingConfig.firstCallPrice);
 
     appliedOffer = "FIRST_TIME_OFFER";
-
   } else if (
-
-  /**
-   * SECOND TIME OFFER
-   */
+    /**
+     * SECOND TIME OFFER
+     */
     pricingConfig?.isSecondOfferEnabled &&
     !userOfferUsage.secondOfferUsedAt
   ) {
     ratePerMin = Number(pricingConfig.secondCallPrice);
 
     appliedOffer = "SECOND_TIME_OFFER";
-
   } else if (pricingConfig?.isGlobalOfferEnabled) {
-
-  /**
-   * GLOBAL OFFER
-   */
+    /**
+     * GLOBAL OFFER
+     */
     ratePerMin = Number(pricingConfig.globalCallPrice);
 
     appliedOffer = "GLOBAL_OFFER";
-
   } else if (
-
-  /**
-   * ASTROLOGER SPECIAL OFFER
-   * Birthday / Diwali / New Year
-   */
+    /**
+     * ASTROLOGER SPECIAL OFFER
+     * Birthday / Diwali / New Year
+     */
     activeOffer?.offer &&
     activeOffer.offer.isActive &&
     Number(activeOffer.offer.price) > 0
@@ -114,16 +108,13 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(activeOffer.offer.price);
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-
   } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
-
-  /**
-   * ASTROLOGER OFFER PRICE
-   */
+    /**
+     * ASTROLOGER OFFER PRICE
+     */
     ratePerMin = Number(callPricing.offerPrice);
 
     appliedOffer = "ASTROLOGER_OFFER_PRICE";
-
   }
 
   console.log("Final Rate Per Min:", ratePerMin);
@@ -142,8 +133,8 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
         type: "CALL",
         status: "ONGOING",
         ratePerMin,
-        source:intake.source,
-        roomId:roomId,
+        source: intake.source,
+        roomId: roomId,
         startedAt: new Date(),
       },
     }),
@@ -216,7 +207,13 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
   return session;
 };
-export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
+export const handleCallReject = async (
+  roomId,
+  prisma,
+  redis,
+  pubClient,
+  by,
+) => {
   try {
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
@@ -260,148 +257,141 @@ export const handleCallReject = async (roomId, prisma, redis, pubClient,by) => {
     }
     //------for update rejected by status in db-------
 
-  const astrologer = await prisma.astrologer.findUnique({
-    where: {
-      id: intake.astrologerId,
-    },
-    include: {
-      pricing: {
-        where: {
-          type: "CALL",
-          isActive: true,
+    const astrologer = await prisma.astrologer.findUnique({
+      where: {
+        id: intake.astrologerId,
+      },
+      include: {
+        pricing: {
+          where: {
+            type: "CALL",
+            isActive: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!astrologer) {
-    throw new Error("Astrologer not found");
-  }
+    if (!astrologer) {
+      throw new Error("Astrologer not found");
+    }
 
-  const callPricing = astrologer.pricing.find((p) => p.type === "CALL");
+    const callPricing = astrologer.pricing.find((p) => p.type === "CALL");
 
-  if (!callPricing) {
-    throw new Error("CHAT pricing not configured");
-  }
+    if (!callPricing) {
+      throw new Error("CHAT pricing not configured");
+    }
 
-  // -----------------------------------
-  // GET USER OFFER USAGE
-  // -----------------------------------
+    // -----------------------------------
+    // GET USER OFFER USAGE
+    // -----------------------------------
 
-  let userOfferUsage = await prisma.userOfferUsage.findUnique({
-    where: {
-      userId: intake.userId,
-    },
-  });
-
-  if (!userOfferUsage) {
-    userOfferUsage = await prisma.userOfferUsage.create({
-      data: {
+    let userOfferUsage = await prisma.userOfferUsage.findUnique({
+      where: {
         userId: intake.userId,
       },
     });
-  }
 
-  // -----------------------------------
-  // GET GLOBAL PRICING CONFIG
-  // -----------------------------------
+    if (!userOfferUsage) {
+      userOfferUsage = await prisma.userOfferUsage.create({
+        data: {
+          userId: intake.userId,
+        },
+      });
+    }
 
-  const pricingConfig = await prisma.pricingConfig.findFirst();
+    // -----------------------------------
+    // GET GLOBAL PRICING CONFIG
+    // -----------------------------------
 
-  // -----------------------------------
-  // GET ACTIVE ASTROLOGER OFFER
-  // -----------------------------------
+    const pricingConfig = await prisma.pricingConfig.findFirst();
 
-  const activeOffer = await prisma.astrologerOffer.findFirst({
-    where: {
-      astrologerId: intake.astrologerId,
-      isActive: true,
-    },
-    include: {
-      offer: true,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-  });
-  // -----------------------------------
-  // PRICE PRIORITY LOGIC
-  // -----------------------------------
+    // -----------------------------------
+    // GET ACTIVE ASTROLOGER OFFER
+    // -----------------------------------
 
-  let ratePerMin = Math.round(callPricing.price);
+    const activeOffer = await prisma.astrologerOffer.findFirst({
+      where: {
+        astrologerId: intake.astrologerId,
+        isActive: true,
+      },
+      include: {
+        offer: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+    // -----------------------------------
+    // PRICE PRIORITY LOGIC
+    // -----------------------------------
 
-  let appliedOffer = "NORMAL";
+    let ratePerMin = Math.round(callPricing.price);
 
-  /**
-   * FIRST TIME OFFER
-   */
-  if (pricingConfig?.isFirstOfferEnabled && !userOfferUsage.firstOfferUsedAt) {
-    ratePerMin = Number(pricingConfig.firstChatPrice);
+    let appliedOffer = "NORMAL";
 
-    appliedOffer = "FIRST_TIME_OFFER";
+    /**
+     * FIRST TIME OFFER
+     */
+    if (
+      pricingConfig?.isFirstOfferEnabled &&
+      !userOfferUsage.firstOfferUsedAt
+    ) {
+      ratePerMin = Number(pricingConfig.firstChatPrice);
 
-  } else if (
+      appliedOffer = "FIRST_TIME_OFFER";
+    } else if (
+      /**
+       * SECOND TIME OFFER
+       */
+      pricingConfig?.isSecondOfferEnabled &&
+      !userOfferUsage.secondOfferUsedAt
+    ) {
+      ratePerMin = Number(pricingConfig.secondChatPrice);
 
-  /**
-   * SECOND TIME OFFER
-   */
-    pricingConfig?.isSecondOfferEnabled &&
-    !userOfferUsage.secondOfferUsedAt
-  ) {
-    ratePerMin = Number(pricingConfig.secondChatPrice);
+      appliedOffer = "SECOND_TIME_OFFER";
 
-    appliedOffer = "SECOND_TIME_OFFER";
+      console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
+    } else if (pricingConfig?.isGlobalOfferEnabled) {
+      /**
+       * GLOBAL OFFER
+       */
+      ratePerMin = Number(pricingConfig.globalChatPrice);
 
-    console.log("Applying SECOND_TIME_OFFER:", ratePerMin);
-  } else if (pricingConfig?.isGlobalOfferEnabled) {
+      appliedOffer = "GLOBAL_OFFER";
+    } else if (
+      /**
+       * ASTROLOGER SPECIAL OFFER
+       * (Birthday / Diwali / New Year etc)
+       */
+      activeOffer?.offer &&
+      activeOffer.offer.isActive &&
+      Number(activeOffer.offer.price) > 0
+    ) {
+      ratePerMin = Number(activeOffer.offer.price);
 
-  /**
-   * GLOBAL OFFER
-   */
-    ratePerMin = Number(pricingConfig.globalChatPrice);
+      appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
+    } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
+      /**
+       * ASTROLOGER OFFER PRICE
+       */
+      ratePerMin = Number(callPricing.offerPrice);
 
-    appliedOffer = "GLOBAL_OFFER";
+      appliedOffer = "ASTROLOGER_OFFER_PRICE";
+    }
 
-  } else if (
+    console.log("Applied Offer:", appliedOffer);
 
-  /**
-   * ASTROLOGER SPECIAL OFFER
-   * (Birthday / Diwali / New Year etc)
-   */
-    activeOffer?.offer &&
-    activeOffer.offer.isActive &&
-    Number(activeOffer.offer.price) > 0
-  ) {
-    ratePerMin = Number(activeOffer.offer.price);
-
-    appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-
-  } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
-
-  /**
-   * ASTROLOGER OFFER PRICE
-   */
-    ratePerMin = Number(callPricing.offerPrice);
-
-    appliedOffer = "ASTROLOGER_OFFER_PRICE";
-
-  }
-
-
-  console.log("Applied Offer:", appliedOffer);
-  
-     await prisma.session.create({
+    await prisma.session.create({
       data: {
         userId: intake.userId,
         astrologerId: intake.astrologerId,
         type: "CALL",
         status: "CANCELLED",
         ratePerMin,
-        source:intake.source,
-        roomId:roomId,
-        by:by,
+        source: intake.source,
+        roomId: roomId,
+        by: by,
         startedAt: new Date(),
-
       },
     });
     return intake.astrologerId;
@@ -445,8 +435,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
       if (existingTx) return;
 
       await prisma.$transaction(async (tx) => {
-
-       const session = await tx.session.findUnique({
+        const session = await tx.session.findUnique({
           where: {
             id: parsed.sessionId,
           },
@@ -472,7 +461,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           return;
         }
 
-                const now = new Date();
+        const now = new Date();
         const startedAt = new Date(session.startedAt);
 
         const durationSec = Math.floor((now - startedAt) / 1000);
@@ -541,12 +530,23 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
 
         // ASTROLOGER CREDIT
         await tx.astrologerWallet.update({
-          where: { id: astroWallet.id },
+          where: {
+            id: astroWallet.id,
+          },
           data: {
             balanceCoins: {
               increment: coinsEarned,
             },
+
             totalEarned: {
+              increment: coinsEarned,
+            },
+
+            totalCommission: {
+              increment: commission,
+            },
+
+            pendingAmount: {
               increment: coinsEarned,
             },
           },
@@ -563,7 +563,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           },
         });
 
-        // ASTROLOGER TRANSACTION (CREDIT) 
+        // ASTROLOGER TRANSACTION (CREDIT)
         await tx.walletTransaction.create({
           data: {
             astrologerWalletId: astroWallet.id,
@@ -575,7 +575,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         });
 
         // FINAL: update session
-          await Promise.all([
+        await Promise.all([
           tx.session.update({
             where: {
               id: session.id,
@@ -623,7 +623,13 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
   }
 };
 
-export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,sessionId) => {
+export const finalizeCallSessionByAdmin = async (
+  roomId,
+  prisma,
+  redis,
+  astroId,
+  sessionId,
+) => {
   let lockKey = null;
   let lockValue = null;
   try {
@@ -658,8 +664,7 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
       if (existingTx) return;
 
       await prisma.$transaction(async (tx) => {
-
-       const session = await tx.session.findUnique({
+        const session = await tx.session.findUnique({
           where: {
             id: parsed.sessionId,
           },
@@ -684,9 +689,9 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
         if (session.status === "COMPLETED") {
           return;
         }
-         const now = new Date();
+        const now = new Date();
         // FINAL: update session
-          await Promise.all([
+        await Promise.all([
           tx.session.update({
             where: {
               id: session.id,
@@ -694,7 +699,7 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
             data: {
               status: "COMPLETED",
               endedAt: now,
-              by:"call ended by admin"
+              by: "call ended by admin",
             },
           }),
 
@@ -709,10 +714,9 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
         ]);
       });
       await redis.del(`active_call:${roomId}`);
-    }else{
+    } else {
       await prisma.$transaction(async (tx) => {
-
-       const session = await tx.session.findUnique({
+        const session = await tx.session.findUnique({
           where: {
             id: sessionId,
           },
@@ -739,7 +743,7 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
         }
         const now = new Date();
         // FINAL: update session
-          await Promise.all([
+        await Promise.all([
           tx.session.update({
             where: {
               id: session.id,
@@ -747,7 +751,7 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
             data: {
               status: "COMPLETED",
               endedAt: now,
-              by:"call ended by admin"
+              by: "call ended by admin",
             },
           }),
 
@@ -782,7 +786,6 @@ export const finalizeCallSessionByAdmin = async (roomId, prisma, redis, astroId,
     }
   }
 };
-
 
 export const removeUserFromQueue = async ({ redis, queueKey, roomId }) => {
   try {

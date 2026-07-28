@@ -414,9 +414,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           const billableMinutes = Math.ceil((durationSec - 30) / 60);
           coinsDeducted = billableMinutes * ratePerMin;
         }
-        console.log("durationSec----:",durationSec);
-        console.log("ratePerMin----:",ratePerMin);
-        console.log("coinsDeducted----:",coinsDeducted);
+        
 
         const chatPricing = session.astrologer.pricing[0];
 
@@ -425,15 +423,12 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         }
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
-        console.log("commissionPercent-----: ",commissionPercent);
 
         const commission = Math.floor(
           (coinsDeducted * commissionPercent) / 100,
         );
-        console.log("commission----:",commission);
         //const coinsEarned = coinsDeducted - commission;
         const coinsEarned =  commission;
-        console.log("----coinsEarned-----:",coinsEarned);
         /* =========================
              USER WALLET
           ========================= */
@@ -1271,15 +1266,6 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
     }
 
     console.log("Final Rate Per Min:", ratePerMin);
-
-    console.log(
-      "chat cancelled:",
-      intake.userId,
-      intake.astrologerId,
-      intake.source,
-      roomId,
-      by,
-    );
     await prisma.session.create({
       data: {
         userId: intake.userId,

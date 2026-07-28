@@ -1,5 +1,4 @@
 export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
-  console.log("Handling call acceptance for roomId:111111111111", roomId);
   const intake = await prisma.intake.findFirst({
     where: { chatId: roomId },
   });

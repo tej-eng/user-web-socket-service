@@ -432,7 +432,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         );
         console.log("commission----:",commission);
         //const coinsEarned = coinsDeducted - commission;
-        const coinsEarned = coinsDeducted;
+        const coinsEarned =  commission;
         console.log("----coinsEarned-----:",coinsEarned);
         /* =========================
              USER WALLET

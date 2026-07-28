@@ -108,14 +108,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(activeOffer.offer.price);
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-  } else if (callPricing.offerPrice && Number(callPricing.offerPrice) > 0) {
-    /**
-     * ASTROLOGER OFFER PRICE
-     */
-    ratePerMin = Number(callPricing.offerPrice);
-
-    appliedOffer = "ASTROLOGER_OFFER_PRICE";
-  }
+  } 
 
   console.log("Final Rate Per Min:", ratePerMin);
 
@@ -490,7 +483,8 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
           (coinsDeducted * commissionPercent) / 100,
         );
 
-        const coinsEarned = coinsDeducted - commission;
+        //const coinsEarned = coinsDeducted - commission;
+        const coinsEarned = commission;
 
         // USER WALLET (must exist)
         const userWallet = await tx.userWallet.findUnique({
@@ -542,9 +536,9 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
               increment: coinsEarned,
             },
 
-            totalCommission: {
-              increment: commission,
-            },
+            // totalCommission: {
+            //   increment: commission,
+            // },
 
             pendingAmount: {
               increment: coinsEarned,

@@ -213,6 +213,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 };
 
 export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
+  console.log("astroId----------finalizeChatSession------:",astroId)
   let lockKey = null;
   let lockValue = null;
 
@@ -437,7 +438,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             userId: session.userId,
           },
         });
-
+        console.log("userID-------",session.userId);
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
 
         if (!userWallet) {

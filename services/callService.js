@@ -207,6 +207,8 @@ export const handleCallReject = async (
   by,
 ) => {
   try {
+
+    console.log("comming in handleCallReject111111 ",roomId,by);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });
@@ -216,22 +218,24 @@ export const handleCallReject = async (
     const queueKey = `queue:${intake.astrologerId}`;
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
-
+    console.log("comming in handleCallReject2222",queueList);
     let matchedItem = null;
 
     //  find correct JSON string
     for (const item of queueList) {
       const parsed = JSON.parse(item);
+      console.log("comming in handleCallReject333333333",parsed.roomId,roomId);
       if (parsed.roomId === roomId) {
         matchedItem = item;
         break;
       }
     }
 
-    const multi = redis.multi();
-
+    const multi = redis.multi(); 
+   console.log("comming in handleCallReject44444",matchedItem);
     // remove exact match
     if (matchedItem) {
+      console.log("comming in handleCallReject55555",matchedItem);
       multi.lRem(queueKey, 0, matchedItem);
     }
 

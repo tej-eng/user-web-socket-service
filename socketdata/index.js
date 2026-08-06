@@ -300,7 +300,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
               break;
             case "call_cancel_by_astrologer":
-              console.log("comming in call call_cancel_by_astrologer");
+              console.log("comming in call call_cancel_by_astrologer",data.roomId);
               await handleCallReject(
                 data.roomId,
                 prisma,

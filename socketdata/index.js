@@ -400,6 +400,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   maximum_time: data.maximum_time,
                   user_image: data.user_image,
                   source: data.source,
+                  idd: roomId,
                 },
               );
             }

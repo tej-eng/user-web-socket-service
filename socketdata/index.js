@@ -470,6 +470,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   receiverId: astroId,
                   callTime: data.maximum_time,
                   userName: data.userName,
+                  idd:roomId
                 },
               );
             }

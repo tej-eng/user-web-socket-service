@@ -11,6 +11,9 @@ import dotenv from "dotenv";
 import fs from "fs/promises";
 import path from "path";
 import cookie from "cookie";
+import {
+  startRedisExpiryService,
+} from "./services/redisExpiryService.js";
 
 dotenv.config();
 const FRONTEND_URL = "https://dhwaniastro.com";
@@ -68,6 +71,11 @@ const redisClient = createClient({
 await pubClient.connect();
 await subClient.connect();
 await redisClient.connect();
+await startRedisExpiryService(redisClient);
+
+console.log(
+  "Redis Expiry Service Started"
+);
 console.log(" Redis Pub/Sub Connected");
 io.adapter(createAdapter(pubClient, subClient));
 /* ==============================

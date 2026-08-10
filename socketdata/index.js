@@ -21,7 +21,10 @@ import {
   handleCallReject,
 } from "../services/callService.js";
 
-import { sendAstrologerNotification } from "../services/notificationService.js";
+import {
+  sendAstrologerNotification,
+  sendChatMessageNotification,
+} from "../services/notificationService.js";
 
 /* =========================
    Socket State
@@ -119,6 +122,9 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
             case "chat_status":
               if (data.status === "Accepted") {
                 try {
+                  const cleanupKey = `cleanup_:${data.roomid}_${data.astroId}_${data.userId}`;
+                  // Change cleanup expiry to 30 minutes
+                  await redisClient.expire(cleanupKey, 30 * 60);
                   const result = await handleAcceptChat(
                     data.roomid,
                     prisma,
@@ -300,7 +306,10 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
               break;
             case "call_cancel_by_astrologer":
-              console.log("comming in call call_cancel_by_astrologer",data.roomId);
+              console.log(
+                "comming in call call_cancel_by_astrologer",
+                data.roomId,
+              );
               await handleCallReject(
                 data.roomId,
                 prisma,
@@ -419,7 +428,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       onSafe("call_request", async (data) => {
         try {
-          console.log("call_request-------:",data);
+          console.log("call_request-------:", data);
           const astroId = data.astro_id;
           const queueKey = `queue:${astroId}`;
           const roomId = data.room_id;
@@ -470,7 +479,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                   receiverId: astroId,
                   callTime: data.maximum_time,
                   userName: data.userName,
-                  idd:roomId
+                  idd: roomId,
                 },
               );
             }
@@ -590,6 +599,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
           // publish
           safePublish(pubClient, "messages", formattedMessage);
+          await sendChatMessageNotification(redisClient, formattedMessage);
         } catch (error) {
           console.error("Error sending message:", error);
         }
@@ -665,9 +675,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
       socket.on("chatCompletedByAdmin", async (data) => {
         try {
-          console.log("chatCompletedByAdmin",data);
+          console.log("chatCompletedByAdmin", data);
           const roomId = data.room_id;
-          await finalizeChatSessionByAdmin(roomId, prisma, redisClient, data.astroId,data.sessionId);
+          await finalizeChatSessionByAdmin(
+            roomId,
+            prisma,
+            redisClient,
+            data.astroId,
+            data.sessionId,
+          );
           // socket.emit("chatCompleted", {
           //   message: `You have left the ${roomId} chat.`,
           //   roomId: roomId,
@@ -781,17 +797,22 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
       });
 
       socket.on("callCompletedByAdmin", async (data) => {
-        console.log("callCompletedByAdmin",data);  
-         socket.broadcast.emit("call_ended_by_admin", {
-            message: `You have left the ${data.room_id} chat.`,
-            roomId: data.room_id,
-          
-          });
+        console.log("callCompletedByAdmin", data);
+        socket.broadcast.emit("call_ended_by_admin", {
+          message: `You have left the ${data.room_id} chat.`,
+          roomId: data.room_id,
+        });
         safePublish(pubClient, "call_ended_by_user", {
           room_id: data.room_id,
         });
 
-        finalizeCallSessionByAdmin(data.room_id, prisma, redisClient, data.astroId,data.sessionId);
+        finalizeCallSessionByAdmin(
+          data.room_id,
+          prisma,
+          redisClient,
+          data.astroId,
+          data.sessionId,
+        );
         const removeUser = await removeUserFromQueue({
           redis: redisClient,
           queueKey: `queue:${data.astroId}`,
@@ -908,16 +929,15 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
     logEvent("socketHandlerCritical", err.stack, true);
   }
 
-
   //-------START CODE FOR LIVE CHAT-------------
-//   onSafe.on("live_message", async (data) => {
-//   console.log("Live Chat:", data);
+  //   onSafe.on("live_message", async (data) => {
+  //   console.log("Live Chat:", data);
 
-//   safePublish(pubClient, "live_message", {
-//           data
-//         });
+  //   safePublish(pubClient, "live_message", {
+  //           data
+  //         });
 
-// });
+  // });
   //-------END CODE FOR LIVE CHAT--------
 }
 

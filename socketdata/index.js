@@ -599,7 +599,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
 
           // publish
           safePublish(pubClient, "messages", formattedMessage);
-          await sendChatMessageNotification(redisClient, formattedMessage);
+         // await sendChatMessageNotification(redisClient, formattedMessage);
         } catch (error) {
           console.error("Error sending message:", error);
         }

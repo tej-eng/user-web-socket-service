@@ -440,6 +440,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         });
         console.log("userID-------",session.userId);
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
 
         if (!userWallet) {
           throw new Error("User wallet not found");
@@ -825,6 +826,7 @@ export const finalizeChatSessionByAdmin = async (
         });
 
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
         if (!userWallet) {
           throw new Error("User wallet not found");
         }
@@ -1137,6 +1139,7 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
     );
 
     multi.del(`request_data:${roomId}`);
+    multi.del(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`);
 
     await multi.exec();
     if (check) {

@@ -117,9 +117,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(activeOffer.offer.price);
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-  } 
-  
-
+  }
 
   console.log("Final Rate Per Min:", ratePerMin);
 
@@ -213,7 +211,7 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 };
 
 export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
-  console.log("astroId----------finalizeChatSession------:",astroId)
+  console.log("astroId----------finalizeChatSession------:", astroId);
   let lockKey = null;
   let lockValue = null;
 
@@ -415,7 +413,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           const billableMinutes = Math.ceil((durationSec - 30) / 60);
           coinsDeducted = billableMinutes * ratePerMin;
         }
-        
 
         const chatPricing = session.astrologer.pricing[0];
 
@@ -429,7 +426,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           (coinsDeducted * commissionPercent) / 100,
         );
         //const coinsEarned = coinsDeducted - commission;
-        const coinsEarned =  commission;
+        const coinsEarned = commission;
         /* =========================
              USER WALLET
           ========================= */
@@ -438,7 +435,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             userId: session.userId,
           },
         });
-        console.log("userID-------",session.userId);
+        console.log("userID-------", session.userId);
         await redis.sRem(`user_in_queue:${astroId}`, session.userId);
         await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
 
@@ -527,7 +524,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             description: "Chat session deduction",
           },
         });
-        console.log("coinsDeducted---------:",coinsDeducted);
+        console.log("coinsDeducted---------:", coinsDeducted);
 
         /* =========================
              ASTRO TRANSACTION
@@ -546,12 +543,12 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           },
         });
 
-        console.log("coinsEarned---------:",coinsEarned);
+        console.log("coinsEarned---------:", coinsEarned);
 
         /* =========================
              UPDATE SESSION
           ========================= */
-          console.log(durationSec,coinsDeducted,coinsEarned,commission);
+        console.log(durationSec, coinsDeducted, coinsEarned, commission);
         await Promise.all([
           tx.session.update({
             where: {
@@ -566,7 +563,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
               commission,
             },
           }),
-          
 
           tx.astrologer.update({
             where: {
@@ -935,7 +931,7 @@ export const finalizeChatSessionByAdmin = async (
         /* =========================
              UPDATE SESSION
           ========================= */
-        
+
         await Promise.all([
           tx.session.update({
             where: {

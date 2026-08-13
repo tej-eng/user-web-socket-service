@@ -71,7 +71,7 @@ const redisClient = createClient({
 await pubClient.connect();
 await subClient.connect();
 await redisClient.connect();
-await startRedisExpiryService(redisClient);
+//await startRedisExpiryService(redisClient);
 
 console.log(
   "Redis Expiry Service Started"

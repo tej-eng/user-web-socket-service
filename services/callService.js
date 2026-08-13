@@ -107,7 +107,7 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     ratePerMin = Number(activeOffer.offer.price);
 
     appliedOffer = "ASTROLOGER_SPECIAL_OFFER";
-  } 
+  }
 
   console.log("Final Rate Per Min:", ratePerMin);
 
@@ -207,8 +207,7 @@ export const handleCallReject = async (
   by,
 ) => {
   try {
-
-    console.log("comming in handleCallReject111111 ",roomId,by);
+    console.log("comming in handleCallReject111111 ", roomId, by);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });
@@ -218,24 +217,28 @@ export const handleCallReject = async (
     const queueKey = `queue:${intake.astrologerId}`;
     // get full queue
     const queueList = await redis.lRange(queueKey, 0, -1);
-    console.log("comming in handleCallReject2222",queueList);
+    console.log("comming in handleCallReject2222", queueList);
     let matchedItem = null;
 
     //  find correct JSON string
     for (const item of queueList) {
       const parsed = JSON.parse(item);
-      console.log("comming in handleCallReject333333333",parsed.roomId,roomId);
+      console.log(
+        "comming in handleCallReject333333333",
+        parsed.roomId,
+        roomId,
+      );
       if (parsed.roomId === roomId) {
         matchedItem = item;
         break;
       }
     }
 
-    const multi = redis.multi(); 
-   console.log("comming in handleCallReject44444",matchedItem);
+    const multi = redis.multi();
+    console.log("comming in handleCallReject44444", matchedItem);
     // remove exact match
     if (matchedItem) {
-      console.log("comming in handleCallReject55555",matchedItem);
+      console.log("comming in handleCallReject55555", matchedItem);
       multi.lRem(queueKey, 0, matchedItem);
     }
 
@@ -482,8 +485,8 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
 
-        const commission = Math.floor(
-          (coinsDeducted * commissionPercent) / 100,
+        const commission = Number(
+          ((coinsDeducted * commissionPercent) / 100).toFixed(2),
         );
 
         //const coinsEarned = coinsDeducted - commission;

@@ -422,9 +422,9 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
 
-        const commission = Math.floor(
-          (coinsDeducted * commissionPercent) / 100,
-        );
+       const commission = Number(
+  ((coinsDeducted * commissionPercent) / 100).toFixed(2)
+);
         //const coinsEarned = coinsDeducted - commission;
         const coinsEarned = commission;
         /* =========================

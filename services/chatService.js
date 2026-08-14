@@ -427,6 +427,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
 );
         //const coinsEarned = coinsDeducted - commission;
         const coinsEarned = commission;
+        const dhwaniEarned = coinsDeducted-commission;
         /* =========================
              USER WALLET
           ========================= */
@@ -559,7 +560,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
               endedAt: now,
               durationSec,
               coinsDeducted,
-              coinsEarned,
+              coinsEarned:dhwaniEarned,
               commission,
             },
           }),

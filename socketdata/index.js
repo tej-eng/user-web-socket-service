@@ -149,11 +149,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
                 if(reject_status){
+                  setTimeout(async () => {
                  await processNextRequest(
                             data.astroId,
                             redisClient,
                             pubClient,
                           );
+                        },5000);
                 }
               }
               break;

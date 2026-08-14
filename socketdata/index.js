@@ -319,7 +319,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 "comming in call call_cancel_by_astrologer",
                 data.roomId,
               );
-              await handleCallReject(
+             const call_can= await handleCallReject(
                 data.roomId,
                 prisma,
                 redisClient,
@@ -327,6 +327,16 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 "REJECTED BY ASTROLOGER",
               );
               io.to(data.roomId).emit("call_cancel_by_astrologer", data);
+              if(call_can){
+                 setTimeout(async () => {
+                 await processNextRequest(
+                            data.astroId,
+                            redisClient,
+                            pubClient,
+                          );
+                        },5000);
+
+              }
               break;
           }
         } catch (err) {

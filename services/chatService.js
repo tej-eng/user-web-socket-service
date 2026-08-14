@@ -1268,7 +1268,7 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
       /**
        * ASTROLOGER OFFER PRICE
        */
-      ratePerMin = Number(chatPricing.offerPrice);
+      //ratePerMin = Number(chatPricing.offerPrice);
 
       appliedOffer = "ASTROLOGER_OFFER_PRICE";
     }

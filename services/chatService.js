@@ -521,6 +521,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             type: "DEBIT",
 
             coins: coinsDeducted,
+            amount:coinsDeducted,
 
             description: "Chat session deduction",
           },
@@ -539,6 +540,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             type: "CREDIT",
 
             coins: coinsEarned,
+            amount:coinsEarned,
 
             description: "Chat session earning",
           },

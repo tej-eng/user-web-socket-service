@@ -560,6 +560,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
             sessionId: session.id,
             type: "DEBIT",
             coins: coinsDeducted,
+            amount:coinsDeducted,
             description: "Call session deduction",
           },
         });
@@ -571,6 +572,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
             sessionId: session.id,
             type: "CREDIT",
             coins: coinsEarned,
+            amount:coinsEarned,
             description: "Call session earning",
           },
         });

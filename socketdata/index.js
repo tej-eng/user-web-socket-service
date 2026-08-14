@@ -139,7 +139,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 }
               }
               if (data.status === "rejected") {
-                await handleReject(
+               const reject_status = await handleReject(
                   data.roomid,
                   prisma,
                   redisClient,
@@ -148,6 +148,13 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
                 );
                 // io.emit("chat_rejected_astrologer", data);
                 io.emit("chat_rejected", data);
+                if(reject_status){
+                 await processNextRequest(
+                            data.astroId,
+                            redisClient,
+                            pubClient,
+                          );
+                }
               }
               break;
 

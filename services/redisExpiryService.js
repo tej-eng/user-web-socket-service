@@ -217,7 +217,7 @@ const handleCleanupKeyExpired = async (
     const keysToDelete = [
       `request_data:${roomId}`,
       `active_chat:${roomId}`,
-      `current_chat:${astrologerId}`,
+      //`current_chat:${astrologerId}`,
     ];
 
     console.log(

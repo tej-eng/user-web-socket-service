@@ -401,7 +401,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         const startedAt = new Date(session.startedAt);
 
         const durationSec = Math.floor((now - startedAt) / 1000);
-        const ratePerMin = session.ratePerMin || 1;
+        const ratePerMin = session.ratePerMin || 0;
 
         let coinsDeducted = 0;
 
@@ -421,7 +421,6 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         }
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
-
        const commission = Number(
   ((coinsDeducted * commissionPercent) / 100).toFixed(2)
 );

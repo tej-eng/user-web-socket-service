@@ -191,7 +191,6 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               break;
 
             case "astrologer_typing":
-              console.log("typing-----------:",data);
               io.to(data.roomid).emit("typing", data);
               break;
             case "queue_update":

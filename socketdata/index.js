@@ -789,6 +789,33 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
         });
       });
 
+      onSafe("cancel_chat_request_by_admin", async (data) => {
+        console.log("cancelled by user");
+        const res = await handleRejectByAdmin(
+          data.room_id,
+          prisma,
+          redisClient,
+          pubClient,
+          "REJECTED BY ADMIN",
+        );
+        if (res) {
+          let queueLength = await pubClient.lLen(`queue:${data.astroid}`);
+          if (queueLength > 0) {
+            setTimeout(async () => {
+              await processNextRequest(data.astroid, redisClient, pubClient);
+            }, 5000);
+          }
+        }
+        io.emit("chat_rejected", data);
+
+        safePublish(pubClient, "chat_cancel_by_admin", {
+          roomId: data.room_id,
+          astroid: data.astroid,
+          user_id: data.user_id,
+          message: "Admin has cancelled the chat request",
+        });
+      });
+
       onSafe("cancel_call_request", async (data) => {
         console.log("cancel by user");
         const res = await handleCallReject(

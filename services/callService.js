@@ -251,9 +251,9 @@ export const handleCallReject = async (
     multi.del(`request_data:${roomId}`);
 
     await multi.exec();
-    if (check) {
+   // if (check) {
       await updateQueuePositions(queueKey, redis, pubClient);
-    }
+    //}
     //------for update rejected by status in db-------
 
     const astrologer = await prisma.astrologer.findUnique({

@@ -1147,7 +1147,7 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
     multi.del(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`);
 
     await multi.exec();
-    console.log("-----checkkkkkkkkkkkkk---------------",check,intake.astrologerId);
+    console.log("-----checkkkkkkkkkkkkk-wwwwwwwwww--------------",check,intake.astrologerId);
     if (check) {
       console.log("22222222222222222222222222222",check);
       await updateQueuePositions(queueKey, redis, pubClient);

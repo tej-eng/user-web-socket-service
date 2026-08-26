@@ -249,6 +249,7 @@ export const handleCallReject = async (
     );
 
     multi.del(`request_data:${roomId}`);
+    multi.del(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`);
 
     await multi.exec();
    // if (check) {

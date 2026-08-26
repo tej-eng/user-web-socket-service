@@ -192,7 +192,11 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
     roomId,
     { EX: 3600 },
   );
-  multi.set(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`, { EX: 3600 });
+  multi.set(
+    `cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`,
+    "1",
+    { EX: 3600 },
+  );
   multi.del(`request_data:${roomId}`);
 
   const check = await multi.exec();

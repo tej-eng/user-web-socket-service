@@ -202,7 +202,11 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   );
 
   multi.set(`current_chat:${intake.astrologerId}`, roomId, { EX: 3600 });
-  multi.set(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`, { EX: 3600 });
+  multi.set(
+  `cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`,
+  "1",
+  { EX: 3600 },
+);
 
   multi.del(`request_data:${roomId}`);
 

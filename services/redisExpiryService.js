@@ -293,7 +293,7 @@ const handleCleanupKeyExpired = async (
     // =================================================
 
     const userQueueKey =
-      `user_in_queue:${astrologerId}`;
+      `user_in_queue`;
 
     const removedFromSet =
       await redisClient.sRem(

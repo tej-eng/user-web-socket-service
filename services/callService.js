@@ -174,7 +174,8 @@ export const handleAcceptCall = async (roomId, prisma, redis, pubClient) => {
 
   //  CORRECT REDIS MULTI (v4)
   const multi = redis.multi();
-  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+  //multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+  multi.sRem(`user_in_queue`, intake.userId);
   multi.set(
     `active_call:${roomId}`,
     JSON.stringify({
@@ -248,7 +249,7 @@ export const handleCallReject = async (
 
     // remove user from set
     const check = await redis.sRem(
-      `user_in_queue:${intake.astrologerId}`,
+      `user_in_queue`,
       intake.userId,
     );
 
@@ -502,7 +503,7 @@ export const finalizeCallSession = async (roomId, prisma, redis, astroId) => {
         const userWallet = await tx.userWallet.findUnique({
           where: { userId: session.userId },
         });
-        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.sRem(`user_in_queue`, session.userId);
         if (!userWallet) {
           throw new Error("User wallet not found");
         }

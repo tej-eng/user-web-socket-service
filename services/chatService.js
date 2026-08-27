@@ -186,7 +186,8 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
 
   const multi = redis.multi();
 
-  multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+  //multi.sRem(`user_in_queue:${intake.astrologerId}`, intake.userId);
+  multi.sRem(`user_in_queue`, intake.userId);
 
   multi.set(
     `active_chat:${roomId}`,
@@ -441,7 +442,8 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           },
         });
         console.log("userID-------", session.userId);
-        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        //await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.sRem(`user_in_queue`, session.userId);
         await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
 
         if (!userWallet) {
@@ -833,7 +835,8 @@ export const finalizeChatSessionByAdmin = async (
           },
         });
 
-        await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        //await redis.sRem(`user_in_queue:${astroId}`, session.userId);
+        await redis.sRem(`user_in_queue`, session.userId);
         await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
         if (!userWallet) {
           throw new Error("User wallet not found");
@@ -1143,8 +1146,13 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
     }
 
     // remove user from set
+    // const check = await redis.sRem(
+    //   `user_in_queue:${intake.astrologerId}`,
+    //   intake.userId,
+    // );
+
     const check = await redis.sRem(
-      `user_in_queue:${intake.astrologerId}`,
+      `user_in_queue`,
       intake.userId,
     );
 
@@ -1344,7 +1352,7 @@ export const handleRejectByAdmin = async (roomId, prisma, redis, pubClient, by) 
 
     // remove user from set
     const check = await redis.sRem(
-      `user_in_queue:${intake.astrologerId}`,
+      `user_in_queue`,
       intake.userId,
     );
 

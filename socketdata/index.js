@@ -429,6 +429,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               );
             }
           } else {
+            console.log("SSSSSSSSSSSSSSSSSSSSSSSSSs CHAT else",queueLength);
             socket.emit("queue_position", {
               message: `You are in queue`,
               position: queueLength - 1,
@@ -499,6 +500,7 @@ async function socketHandler(io, pubClient, subClient, redisClient) {
               );
             }
           } else {
+            console.log("SSSSSSSSSSSSSSSSSSSSSSSSSs call else",queueLength);
             socket.emit("queue_position", {
               message: `You are in queue`,
               position: queueLength - 1,

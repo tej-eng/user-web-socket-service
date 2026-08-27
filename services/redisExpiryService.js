@@ -143,53 +143,61 @@ export const startRedisExpiryService = async (redisClient) => {
 // HANDLE EXPIRED CLEANUP KEY
 // ==================================================
 
+// ==================================================
+// HANDLE EXPIRED CLEANUP KEY
+// ==================================================
+
 const handleCleanupKeyExpired = async (
   redisClient,
-  expiredKey
+  expiredKey,
 ) => {
   try {
     console.log(
       "[Redis Cleanup] Processing:",
-      expiredKey
+      expiredKey,
     );
 
-    /**
-     * Expected:
-     *
-     * cleanup_:roomId_astrologerId_userId
-     *
-     * Example:
-     *
-     * cleanup_:11633b03-6b63-4623-8afc-853381c6f357_61c912fa-2be4-41be-bcf7-93b7daecc961_30143e6c-4554-44d7-9e5f-62c95b19cd93
-     */
+    // =================================================
+    // VALIDATE PREFIX
+    // =================================================
 
     const prefix = "cleanup_:";
 
     if (!expiredKey.startsWith(prefix)) {
       console.log(
         "[Redis Cleanup] Invalid prefix:",
-        expiredKey
+        expiredKey,
       );
 
       return;
     }
 
+    // =================================================
+    // PARSE CLEANUP KEY
+    // =================================================
+
+    /**
+     * Expected:
+     *
+     * cleanup_:roomId_astrologerId_userId
+     */
+
     const keyData = expiredKey.substring(
-      prefix.length
+      prefix.length,
     );
 
-    // UUIDs contain "-" and not "_", so this is safe
+    // UUIDs contain "-" but not "_"
     const parts = keyData.split("_");
 
     if (parts.length !== 3) {
       console.error(
         "[Redis Cleanup] Invalid cleanup key:",
-        expiredKey
+        expiredKey,
       );
 
       console.error(
         "[Redis Cleanup] Parts:",
-        parts
+        parts,
       );
 
       return;
@@ -207,7 +215,100 @@ const handleCleanupKeyExpired = async (
         roomId,
         astrologerId,
         userId,
-      }
+      },
+    );
+
+    // =================================================
+    // CHECK ASTROLOGER PRESENCE
+    // =================================================
+
+    const presenceKey =
+      `presence:astro:${astrologerId}`;
+
+    console.log(
+      "[Redis Cleanup] Checking presence:",
+      presenceKey,
+    );
+
+    const presenceData =
+      await redisClient.get(presenceKey);
+
+    // =================================================
+    // PRESENCE KEY NOT FOUND
+    // =================================================
+
+    if (!presenceData) {
+      console.log(
+        "[Redis Cleanup] Presence key not found:",
+        presenceKey,
+      );
+
+      console.log(
+        "[Redis Cleanup] Cleanup SKIPPED.",
+      );
+
+      return;
+    }
+
+    // =================================================
+    // PARSE PRESENCE DATA
+    // =================================================
+
+    let presence;
+
+    try {
+      presence = JSON.parse(presenceData);
+    } catch (error) {
+      console.error(
+        "[Redis Cleanup] Invalid presence JSON:",
+        presenceData,
+      );
+
+      return;
+    }
+
+    console.log(
+      "[Redis Cleanup] Presence data:",
+      presence,
+    );
+
+    // =================================================
+    // CHECK APP STATE
+    // =================================================
+
+    const appState = presence?.appState;
+
+    console.log(
+      "[Redis Cleanup] App State:",
+      appState,
+    );
+
+    // =================================================
+    // APP IS NOT BACKGROUND
+    // =================================================
+
+    if (appState !== "background" || "inactive") {
+      console.log(
+        "[Redis Cleanup] App is NOT in background.",
+      );
+
+      console.log(
+        "[Redis Cleanup] Skipping cleanup.",
+      );
+
+      return;
+    }
+
+    // =================================================
+    // APP IS BACKGROUND
+    // =================================================
+
+    console.log(
+      "[Redis Cleanup] App is in BACKGROUND.",
+    );
+
+    console.log(
+      "[Redis Cleanup] Proceeding with cleanup...",
     );
 
     // =================================================
@@ -217,23 +318,21 @@ const handleCleanupKeyExpired = async (
     const keysToDelete = [
       `request_data:${roomId}`,
       `active_chat:${roomId}`,
-      //`current_chat:${astrologerId}`,
+      `active_call:${roomId}`,
     ];
 
     console.log(
       "[Redis Cleanup] Deleting keys:",
-      keysToDelete
+      keysToDelete,
     );
 
-    if (keysToDelete.length > 0) {
-      const deletedCount =
-        await redisClient.del(keysToDelete);
+    const deletedCount =
+      await redisClient.del(keysToDelete);
 
-      console.log(
-        "[Redis Cleanup] Deleted count:",
-        deletedCount
-      );
-    }
+    console.log(
+      "[Redis Cleanup] Deleted count:",
+      deletedCount,
+    );
 
     // =================================================
     // REMOVE USER FROM QUEUE
@@ -244,19 +343,19 @@ const handleCleanupKeyExpired = async (
 
     console.log(
       "[Redis Cleanup] Checking queue:",
-      queueKey
+      queueKey,
     );
 
     const queueData =
       await redisClient.lRange(
         queueKey,
         0,
-        -1
+        -1,
       );
 
     console.log(
       "[Redis Cleanup] Queue items:",
-      queueData.length
+      queueData.length,
     );
 
     for (const item of queueData) {
@@ -266,24 +365,25 @@ const handleCleanupKeyExpired = async (
 
         if (
           parsed.roomId === roomId ||
+          parsed.room_id === roomId ||
           parsed.user_id === userId
         ) {
           const removed =
             await redisClient.lRem(
               queueKey,
               0,
-              item
+              item,
             );
 
           console.log(
             "[Redis Cleanup] Queue item removed:",
-            removed
+            removed,
           );
         }
       } catch (error) {
         console.error(
           "[Redis Cleanup] Invalid queue item:",
-          item
+          item,
         );
       }
     }
@@ -293,34 +393,74 @@ const handleCleanupKeyExpired = async (
     // =================================================
 
     const userQueueKey =
-      `user_in_queue`;
+      `user_in_queue:${astrologerId}`;
 
     const removedFromSet =
       await redisClient.sRem(
         userQueueKey,
-        userId
+        userId,
       );
 
     console.log(
       "[Redis Cleanup] User removed from queue set:",
-      removedFromSet
+      removedFromSet,
+    );
+
+    // =================================================
+    // CLEAR CURRENT CHAT/CALL ONLY IF SAME ROOM
+    // =================================================
+
+    const currentChatKey =
+      `current_chat:${astrologerId}`;
+
+    const currentCallKey =
+      `current_call:${astrologerId}`;
+
+    const [
+      currentChatRoom,
+      currentCallRoom,
+    ] = await Promise.all([
+      redisClient.get(currentChatKey),
+      redisClient.get(currentCallKey),
+    ]);
+
+    if (currentChatRoom === roomId) {
+      await redisClient.del(currentChatKey);
+
+      console.log(
+        "[Redis Cleanup] Deleted current chat:",
+        currentChatKey,
+      );
+    }
+
+    if (currentCallRoom === roomId) {
+      await redisClient.del(currentCallKey);
+
+      console.log(
+        "[Redis Cleanup] Deleted current call:",
+        currentCallKey,
+      );
+    }
+
+    // =================================================
+    // COMPLETED
+    // =================================================
+
+    console.log(
+      "[Redis Cleanup] ==================================",
     );
 
     console.log(
-      "[Redis Cleanup] =================================="
+      `[Redis Cleanup] Cleanup completed for room: ${roomId}`,
     );
 
     console.log(
-      `[Redis Cleanup] Cleanup completed for room: ${roomId}`
-    );
-
-    console.log(
-      "[Redis Cleanup] =================================="
+      "[Redis Cleanup] ==================================",
     );
   } catch (error) {
     console.error(
       "[Redis Cleanup] Error:",
-      error
+      error,
     );
   }
 };

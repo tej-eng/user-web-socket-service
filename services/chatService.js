@@ -446,9 +446,9 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         await redis.sRem(`user_in_queue`, session.userId);
         await redis.del(`cleanup_:${roomId}_${astroId}_${session.userId}`);
 
-        if (!userWallet) {
-          throw new Error("User wallet not found");
-        }
+        // if (!userWallet) {
+        //   throw new Error("User wallet not found");
+        // }
 
         /* =========================
              ASTRO WALLET

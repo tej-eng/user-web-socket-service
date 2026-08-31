@@ -474,9 +474,9 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         /* =========================
              BALANCE CHECK
           ========================= */
-        if (userWallet.balanceCoins < coinsDeducted) {
-          //throw new Error("Insufficient balance");
-        }
+        // if (userWallet.balanceCoins < coinsDeducted) {
+        //   throw new Error("Insufficient balance");
+        // }
 
         /* =========================
              USER DEBIT

@@ -483,7 +483,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
           ========================= */
         await tx.userWallet.update({
           where: {
-            id: userWallet.id,
+            id: userWallet?.id,
           },
 
           data: {

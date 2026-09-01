@@ -203,11 +203,9 @@ export const handleAcceptChat = async (roomId, prisma, redis, pubClient) => {
   );
 
   multi.set(`current_chat:${intake.astrologerId}`, roomId, { EX: 3600 });
-  multi.set(
-  `cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`,
-  "1",
-  { EX: 3600 },
-);
+  multi.set(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`, "1", {
+    EX: 3600,
+  });
 
   multi.del(`request_data:${roomId}`);
 
@@ -427,12 +425,12 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         }
 
         const commissionPercent = chatPricing.commissionPercent ?? 50;
-       const commission = Number(
-  ((coinsDeducted * commissionPercent) / 100).toFixed(2)
-);
+        const commission = Number(
+          ((coinsDeducted * commissionPercent) / 100).toFixed(2),
+        );
         //const coinsEarned = coinsDeducted - commission;
         const coinsEarned = commission;
-        const dhwaniEarned = coinsDeducted-commission;
+        const dhwaniEarned = coinsDeducted - commission;
         /* =========================
              USER WALLET
           ========================= */
@@ -441,6 +439,10 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             userId: session.userId,
           },
         });
+
+        console.log("userID-------", session.userId);
+        console.log("userWallet-------", userWallet);
+        console.log("coinsDeducted-------", coinsDeducted);
         console.log("userID-------", session.userId);
         //await redis.sRem(`user_in_queue:${astroId}`, session.userId);
         await redis.sRem(`user_in_queue`, session.userId);
@@ -474,24 +476,41 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         /* =========================
              BALANCE CHECK
           ========================= */
-        // if (userWallet.balanceCoins < coinsDeducted) {
-        //   throw new Error("Insufficient balance");
-        // }
+        if (coinsDeducted > 0) {
+          if (!userWallet) {
+            throw new Error("User wallet not found");
+          }
 
-        /* =========================
-             USER DEBIT
-          ========================= */
-        await tx.userWallet.update({
-          where: {
-            id: userWallet?.id,
-          },
+          if (userWallet.balanceCoins < coinsDeducted) {
+            throw new Error("Insufficient balance");
+          }
 
-          data: {
-            balanceCoins: {
-              decrement: coinsDeducted,
+          await tx.userWallet.update({
+            where: {
+              id: userWallet.id,
             },
-          },
-        });
+            data: {
+              balanceCoins: {
+                decrement: coinsDeducted,
+              },
+            },
+          });
+
+          await tx.walletTransaction.create({
+            data: {
+              userWalletId: userWallet.id,
+              sessionId: session.id,
+              type: "DEBIT",
+              coins: coinsDeducted,
+              amount: coinsDeducted,
+              description: "Chat session deduction",
+            },
+          });
+        } else {
+          console.log(
+            "FREE CHAT: No user wallet debit required because coinsDeducted = 0",
+          );
+        }
 
         /* =========================
              ASTRO CREDIT
@@ -518,20 +537,20 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
         /* =========================
              USER TRANSACTION
           ========================= */
-        await tx.walletTransaction.create({
-          data: {
-            userWalletId: userWallet.id,
+        // await tx.walletTransaction.create({
+        //   data: {
+        //     userWalletId: userWallet.id,
 
-            sessionId: session.id,
+        //     sessionId: session.id,
 
-            type: "DEBIT",
+        //     type: "DEBIT",
 
-            coins: coinsDeducted,
-            amount:coinsDeducted,
+        //     coins: coinsDeducted,
+        //     amount:coinsDeducted,
 
-            description: "Chat session deduction",
-          },
-        });
+        //     description: "Chat session deduction",
+        //   },
+        // });
         console.log("coinsDeducted---------:", coinsDeducted);
 
         /* =========================
@@ -546,7 +565,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
             type: "CREDIT",
 
             coins: coinsEarned,
-            amount:coinsEarned,
+            amount: coinsEarned,
 
             description: "Chat session earning",
           },
@@ -568,7 +587,7 @@ export const finalizeChatSession = async (roomId, prisma, redis, astroId) => {
               endedAt: now,
               durationSec,
               coinsDeducted,
-              coinsEarned:dhwaniEarned,
+              coinsEarned: dhwaniEarned,
               commission,
             },
           }),
@@ -1053,7 +1072,7 @@ export const finalizeChatSessionByAdmin = async (
 
 export const processNextRequest = async (astrologerId, redis, pubClient) => {
   try {
-    console.log("processNextRequest-------------:",astrologerId);
+    console.log("processNextRequest-------------:", astrologerId);
     const queueKey = `queue:${astrologerId}`;
     //const queueItem = await redis.lIndex(queueKey, 0);
     const queueList = await redis.lRange(queueKey, 0, -1);
@@ -1116,7 +1135,7 @@ export const processNextRequest = async (astrologerId, redis, pubClient) => {
 };
 export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
   try {
-    console.log("handleReject------------:",roomId);
+    console.log("handleReject------------:", roomId);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });
@@ -1151,19 +1170,20 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
     //   intake.userId,
     // );
 
-    const check = await redis.sRem(
-      `user_in_queue`,
-      intake.userId,
-    );
+    const check = await redis.sRem(`user_in_queue`, intake.userId);
 
     multi.del(`request_data:${roomId}`);
     multi.del(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`);
 
     await multi.exec();
-    console.log("-----checkkkkkkkkkkkkk-wwwwwwwwww--------------",check,intake.astrologerId);
+    console.log(
+      "-----checkkkkkkkkkkkkk-wwwwwwwwww--------------",
+      check,
+      intake.astrologerId,
+    );
     //if (check) {
-      console.log("22222222222222222222222222222",check);
-      await updateQueuePositions(queueKey, redis, pubClient);
+    console.log("22222222222222222222222222222", check);
+    await updateQueuePositions(queueKey, redis, pubClient);
     //}
     //------for update rejected by status in db-------
 
@@ -1181,7 +1201,7 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
       },
     });
 
-     await prisma.astrologer.update({
+    await prisma.astrologer.update({
       where: {
         id: intake.astrologerId,
       },
@@ -1319,9 +1339,15 @@ export const handleReject = async (roomId, prisma, redis, pubClient, by) => {
   }
 };
 
-export const handleRejectByAdmin = async (roomId, prisma, redis, pubClient, by) => {
+export const handleRejectByAdmin = async (
+  roomId,
+  prisma,
+  redis,
+  pubClient,
+  by,
+) => {
   try {
-    console.log("handleReject------------:",roomId);
+    console.log("handleReject------------:", roomId);
     const intake = await prisma.intake.findFirst({
       where: { chatId: roomId },
     });
@@ -1351,10 +1377,7 @@ export const handleRejectByAdmin = async (roomId, prisma, redis, pubClient, by) 
     }
 
     // remove user from set
-    const check = await redis.sRem(
-      `user_in_queue`,
-      intake.userId,
-    );
+    const check = await redis.sRem(`user_in_queue`, intake.userId);
 
     multi.del(`request_data:${roomId}`);
     multi.del(`cleanup_:${roomId}_${intake.astrologerId}_${intake.userId}`);
@@ -1518,7 +1541,7 @@ export const handleRejectByAdmin = async (roomId, prisma, redis, pubClient, by) 
 };
 export const updateQueuePositions = async (queueKey, redis, pubClient) => {
   try {
-    console.log("updateQueuePositions----------------",queueKey);
+    console.log("updateQueuePositions----------------", queueKey);
     const queueList = await redis.lRange(queueKey, 0, -1);
 
     if (!queueList || queueList.length === 0) return;
